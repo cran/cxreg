@@ -2,11 +2,10 @@
 #'
 #' Print a summary of the results of cross-validation for a classo model.
 #'
-#' A summary of the cross-validated fit is produced, slightly different for a
-#' 'cv.relaxed' object than for a 'cv.classo' object.  Note that a 'cv.relaxed'
-#' object inherits from class 'cv.classo', so by directly invoking
-#' \code{print.cv.classo(object)} will print the summary as if
-#' \code{relax=TRUE} had not been used.
+#' A two-row table is printed showing the optimal \code{lambda} values
+#' selected by the minimum CV error (\code{lambda.min}) and the 1-standard-error
+#' rule (\code{lambda.1se}), along with the corresponding CV error, its standard
+#' error, and the number of nonzero coefficients.
 #'
 #' @aliases print.cv.classo
 #' @param x fitted 'cv.classo' object
@@ -21,16 +20,16 @@
 #' @export
 #' @export print.cv.classo
 print.cv.classo <- function(x, digits = max(3, getOption("digits") - 3), ...) {
-
+  
   cat("\nCall: ", deparse(x$call), "\n\n")
-
+  
   optlams <- c(x$lambda.min,x$lambda.1se)
   which <- match(optlams,x$lambda)
   mat <- with(x, cbind(optlams, which, cvm[which], cvsd[which], nzero[which]))
   dimnames(mat) <- list(c("min", "1se"), c("Lambda", "Index","Measure",
-                                          "SE", "Nonzero"))
+                                           "SE", "Nonzero"))
   cat("Measure:", x$name,"\n\n")
-
+  
   mat <- data.frame(mat,check.names=FALSE)
   class(mat) <- c("anova",class(mat))
   print(mat,digits=digits)

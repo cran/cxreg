@@ -8,10 +8,10 @@ cglasso(
   S,
   D = NULL,
   type = c("I", "II"),
-  nobs,
+  m,
   lambda = NULL,
   nlambda = 50,
-  lambda.min.ratio = ifelse(nobs < p, 0.01, 1e-04),
+  lambda.min.ratio = 0.01,
   W.init = NULL,
   stopping_rule = TRUE,
   stop_criterion = c("EBIC", "AIC", "RMSE"),
@@ -22,15 +22,15 @@ cglasso(
 )
 }
 \arguments{
-\item{S}{p x p-dimensional symmetric spectral density (or spectral coherence) matrix. S is considered as being computed by average smoothed periodogram (the bandwidth is computed by using the given nobs).}
+\item{S}{nvar x nvar-dimensional symmetric spectral density (or spectral coherence) matrix. S is considered as being computed by average smoothed periodogram (the bandwidth is computed by using the given nobs).}
 
-\item{D}{The p x p-dimensional diagonal matrix with spectral densities as the diagonal entries. Default is \code{NULL}. If D is not provided, diagonals of S are chosen.}
+\item{D}{The nvar x nvar-dimensional diagonal matrix to produce the partial spectral coherence matrix from S. Default is \code{NULL}. If D is not specified, the function automatically takes the inverse square root of the diagonals of S.}
 
 \item{type}{A logical flag to choose the formulation to solve. Default is \code{I}. If type is \code{I}, the algorithm solves CGLASSO-I in the reference,
-\deqn{ D^{-1/2} \left( \arg\min_{\Theta} \operatorname{Tr} \left[ \hat{R} \hat{\Theta} \right] - \log \det \Theta + \sum_{i \ne j} \left| \Theta_{ij} \right| \right) D^{-1/2} }
-for the given D. If type is \code{II}, the algorithm solves CGLASSO-II in the reference. It is for each iterative classo with covariate update, the squared-root of scale matrix \eqn{ D^{-1/2}} is multiplied. Please refer to the equation (5.2) in the reference for the details.}
+\deqn{ D^{-1/2} \left( \arg\min_{\Theta} \mathrm{Tr} \left[ \hat{R} \hat{\Theta} \right] - \log \det \Theta + \sum_{i \ne j} \left| \Theta_{ij} \right| \right) D^{-1/2} }
+for the given D. If type is \code{II}, the algorithm solves CGLASSO-II in the reference. It is for each iterative classo with covariate update, the squared-root of scale matrix \eqn{ D^{-1/2}} is multiplied. Please refer to Algorithm 2 in the reference for the details.}
 
-\item{nobs}{Number of observations used in computation of the spectral density matrix S. This quantity is need to compute the Fourier frequency, extended BIC, and bandwidth for the average smoothed periodogram.}
+\item{m}{Window size. This quantity is need to compute the Fourier frequency, extended BIC, and bandwidth for the average smoothed periodogram.}
 
 \item{lambda}{A user supplied \code{lambda} sequence.
 Typical usage is to have the program compute its own \code{lambda} sequence based on
@@ -42,10 +42,7 @@ WARNING: use with care. Avoid supplying a single value for \code{lambda}}
 
 \item{lambda.min.ratio}{Smallest value for \code{lambda}, as a fraction of
 \code{lambda.max}, the (data derived) entry value (i.e. the smallest value
-for which all coefficients are zero). The default depends on the sample size
-\code{nobs} relative to the number of variables \code{nvars}.
-If \code{nobs > p}, the default is \code{0.0001}, close to zero.
-If \code{nobs < p}, the default is \code{0.01}.}
+for which all coefficients are zero). ???}
 
 \item{W.init}{Logical flag whether the initially estimated spectral density matrix is given. Default is \code{NULL}.}
 
@@ -63,15 +60,16 @@ If \code{nobs < p}, the default is \code{0.01}.}
 useful for big models that take a long time to fit.}
 }
 \value{
-An object with class "cglassofit" and "cglasso".
+An object with class \code{"cglassofit"} and \code{"cglasso"}.
+\describe{
 \item{stop_arr}{Sequence of values of information criterion for a fixed lambda.}
 \item{stop_criterion}{Stopping criterion used.}
 \item{min_index}{The index for lambda that minimizes the value of the information criterion.}
 \item{lambda_grid}{Sequence of lambdas used.}
 \item{Theta_list}{Estimated inverse spectral matrix for each fixed lambda. It is provided in the list.}
-\item{type}{Type of the formulation used, either CGALSSO-I or CGLASSO-II.}
-\item{scale}{Whether the spectral density matrix (covariance) or spectral coherence (coherence) is given.}
+\item{type}{Type of the formulation used, either CGLASSO-I or CGLASSO-II.}
 \item{D}{Used scale diagonal matrix.}
+}
 }
 \description{
 Fit a complex-valued graphical lasso for spectral precision matrix (inverse spectral density matrix) via a complex variable-wise coordinate descent algorithm for classo with covariates update.
@@ -89,18 +87,18 @@ Sigma <- solve(C)
 set.seed(1010)
 m <- floor(sqrt(n)); j <- 1
 X_t <- mvtnorm::rmvnorm(n = n, mean = rep(0, p), sigma = Sigma)
-d_j <- dft.X(X_t,j,m)
+d_j <- dft.j(X_t,j,m)
 f_j_hat <- t(d_j) \%*\% Conj(d_j) / (2*m+1)
-fit <- cglasso(S=f_j_hat, nobs=n)
+fit <- cglasso(S=f_j_hat, m=floor(sqrt(n)))
 }
 \references{
-Deb, N., Kuceyeski, A., Basu, S. (2024)
-\emph{Regularized Estimation of Sparse Spectral Precision Matrices},
-\url{https://arxiv.org/abs/2401.11128}.
+Deb, N., Kim, Y., Basu, S. (2026)
+\emph{Inference for High-Dimensional Sparse Spectral Precision Matrices},
+\url{https://arxiv.org/abs/2606.07986}.
 }
 \author{
 Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
-\email{yk748@cornell.edu}
+\email{ykim124@ua.edu}
 }
 \keyword{complex-valued}
 \keyword{matrix}

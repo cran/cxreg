@@ -3,7 +3,6 @@
 \name{coef.classo}
 \alias{coef.classo}
 \alias{predict.classo}
-\alias{coef.classo,}
 \title{Extract coefficients from a classo object}
 \usage{
 \method{coef}{classo}(object, s = NULL, exact = FALSE, ...)
@@ -12,7 +11,7 @@
   object,
   newx,
   s = NULL,
-  type = c("response", "coefficients", "nonzero"),
+  type = c("link", "response", "coefficients", "nonzero"),
   exact = FALSE,
   ...
 )
@@ -21,51 +20,46 @@
 \item{object}{Fitted \code{"classo"} model object.}
 
 \item{s}{Value(s) of the penalty parameter \code{lambda} at which
-predictions are required. Default is the entire sequence used to create the
-model.}
+predictions are required. Default is the entire sequence used to create
+the model.}
 
-\item{exact}{This argument is relevant only when predictions are made at
-values of \code{s} (lambda) \emph{different} from those used in the fitting
-of the original model. If \code{exact=FALSE} (default), then the predict function
-uses linear interpolation to make predictions for values of \code{s} (lambda) that do
-not coincide with those used in the fitting algorithm. While this is often a
-good approximation, it can sometimes be a bit coarse.  With
-\code{exact=TRUE}, these different values of \code{s} are merged (and
-sorted) with \code{object$lambda}, and the model is refit before predictions
-are made. In this case, it is required to supply the original data \code{x=}
-and \code{y=} as additional named arguments to \code{predict()} or
-\code{coef()}.  The workhorse \code{predict.classo()} needs to \code{update}
-the model, and so needs the data used to create it. The same is true of
-\code{weights} if these were used in the original call. Failure to do
-so will result in an error.
-\code{type="nonzero"})}
+\item{exact}{Relevant only when predictions are made at values of \code{s}
+different from those used in fitting. If \code{exact = FALSE} (default),
+linear interpolation is used. If \code{exact = TRUE}, the model is refit
+at the new \code{s} values; the original \code{x} and \code{y} (and
+\code{weights} if used) must be supplied as additional named arguments.}
 
-\item{\dots}{This is the mechanism for passing arguments like \code{x=} when
-\code{exact=TRUE}; see\code{exact} argument.}
+\item{\dots}{Additional arguments, e.g. \code{x=} and \code{y=} when
+\code{exact = TRUE}.}
 
 \item{newx}{Matrix of new values for \code{x} at which predictions are to be
-made. Must be a matrix. This #' argument is not used for \code{type=c("coefficients","nonzero")}}
+made. Must be a complex-valued matrix. Not used for
+\code{type = c("coefficients", "nonzero")}.}
 
-\item{type}{Type of prediction required. Type \code{"link"} givee the fitted
-values for \code{"gaussian"}. Type \code{"response"} is equivalent to type
-\code{"link"}. Type \code{"coefficients"} computes the coefficients at the
-requested values for \code{s}. Type \code{"nonzero"} returns a list of the indices
-of the nonzero coefficients for each value of \code{s}.}
+\item{type}{Type of prediction required. \code{"link"} and \code{"response"}
+give the fitted values \eqn{X\hat{\beta}}. \code{"coefficients"} returns
+the coefficient matrix at the requested values of \code{s}.
+\code{"nonzero"} returns a list of indices of nonzero coefficients for
+each value of \code{s}.}
 }
 \value{
-The object returned depends on type.
+The object returned depends on \code{type}. \code{"coefficients"}
+returns a matrix; \code{"nonzero"} returns a list of index vectors;
+\code{"link"} and \code{"response"} return a complex matrix of
+predictions.
 }
 \description{
-Similar to other predict methods, this functions predicts fitted values,
+Similar to other predict methods, this function predicts fitted values,
 coefficients and more from a fitted \code{"classo"} object.
 }
 \details{
-This function actually calls \code{NextMethod()}.
-\code{coef(...)} is equivalent to \code{predict(type="coefficients",...)}
+\code{coef(...)} is equivalent to \code{predict(type="coefficients",...)}.
+\code{"link"} and \code{"response"} are treated identically and both return
+the fitted complex-valued predictions \eqn{\hat{y} = X\hat{\beta}}.
 }
 \references{
 Deb, N., Kuceyeski, A. and Basu, S. (2024)
-\emph{Regularized estimation of sparse spectral precision matrices (2024), Preprint},
+\emph{Regularized estimation of sparse spectral precision matrices},
 \url{https://arxiv.org/abs/2401.11128}.
 }
 \seealso{
@@ -74,7 +68,7 @@ Deb, N., Kuceyeski, A. and Basu, S. (2024)
 }
 \author{
 Younghoon Kim, Navonil Deb, and Sumanta Basu \cr Maintainer:
-Younghoon Kim \href{mailto:yk748@cornell.edu}{yk748@cornell.edu}
+Younghoon Kim \href{mailto:ykim124@ua.edu}{ykim124@ua.edu}
 }
 \keyword{models}
 \keyword{regression}

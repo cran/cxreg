@@ -4,10 +4,14 @@
 #' \code{cglasso.path} solves the penalized Gaussian maximum likelihood problem for a path of lambda values.
 #'
 #' @param S p x p-dimensional symmetric spectral density (or spectral coherence) matrix. S is considered as being computed by average smoothed periodogram (the bandwidth is computed by using the given nobs).
-#' @param D The p x p-dimensional diagonal matrix with spectral densities as the diagonal entries. Default is \code{NULL}. If D is not provided, diagonals of S are chosen.
+#' @param D The p x p-dimensional diagonal matrix to produce the partial spectral coherence matrix from S. Default is \code{NULL}. If D is not specified, the function automatically takes the inverse square root of the diagonals of S.
 #' @param type Logical flag to choose the formulation to solve. Default is \code{I}. If type is \code{I}, the algorithm solves CGLASSO-I in the reference, 
-#' \deqn{D^{-1/2}(\arg\min_{\Theta}Tr[\hat{R}\hat{\Theta}]-\log\det\Theta + \sum_{i\neq j}|\Theta_{ij}|)D^{-1/2}} for the given $D$. If type is \code{II}, the algorithm solves CGLASSO-II in the reference. It is for each iterative classo with covariate update, the scale matrix D is multiplied. Please see the reference for the details of the iterative updates.
-#' @param nobs Number of observations used in computation of the spectral density matrix S. This quantity is need to compute the Fourier frequency, extended BIC, and bandwidth for the average smoothed periodogram. 
+#' \deqn{D^{-1/2}\Bigl(\arg\min_{\Theta}\mathrm{Tr}[\hat{R}\hat{\Theta}]
+#'   -\log\det\Theta + \sum_{i\neq j}|\Theta_{ij}|\Bigr)D^{-1/2}}
+#' for the given \eqn{D}. If type is \code{II}, the algorithm solves CGLASSO-II
+#' in the reference: for each iterative classo with covariate update, the scale
+#' matrix \eqn{D} is multiplied. Please see the reference for details.
+#' @param m Window size. This quantity is need to compute the Fourier frequency, extended BIC, and bandwidth for the average smoothed periodogram.
 #' @param lambda A user supplied \code{lambda} sequence.
 #' Typical usage is to have the program compute its own \code{lambda} sequence based on
 #' \code{nlambda} and \code{lambda.min.ratio}.
@@ -16,10 +20,7 @@
 #' @param nlambda The number of \code{lambda} values - default is 50.
 #' @param lambda.min.ratio Smallest value for \code{lambda}, as a fraction of
 #' \code{lambda.max}, the (data derived) entry value (i.e. the smallest value
-#' for which all coefficients are zero). The default depends on the sample size
-#' \code{nobs} relative to the number of variables \code{nvar}.
-#' If \code{nobs > p}, the default is \code{0.0001}, close to zero.
-#' If \code{nobs < p}, the default is \code{0.01}.
+#' for which all coefficients are zero). ???
 #' @param W.init Logical flag whether the initially estimated spectral density matrix is given. Default is \code{NULL}.
 #' @param stopping_rule Logical flag if the algorithm is terminated by stopping rule. If the algorithm is early terminated, not all estimates for initially designated lambdas are explored. 
 #' @param stop_criterion Stopping criterion for early termination. Default is \code{EBIC} (Extended BIC). Alternatively, \code{AIC} (AIC) and \code{RMSE} (root mean squared error between two consecutive estimates) can be used.
@@ -29,70 +30,43 @@
 #' useful for big models that take a long time to fit.
 #' @param \dots Other arguments that can be passed to \code{cglasso}
 #' 
-#' @return An object with class "cglassofit" and "cglasso".
-#' \item{a0}{Intercept sequence of length \code{length(lambda)}.}
-#' \item{beta}{A \code{nvar x length(lambda)} matrix of coefficients, stored in
-#' sparse matrix format.}
-#' \item{df}{The number of nonzero coefficients for each value of lambda.}
-#' \item{dim}{Dimension of coefficient matrix.}
-#' \item{lambda}{The actual sequence of lambda values used. When alpha=0, the
-#' largest lambda reported does not quite give the zero coefficients reported
-#' (lambda=inf would in principle). Instead, the largest lambda for alpha=0.001
-#' is used, and the sequence of lambda values is derived from this.}
-#' \item{dev}{The fraction of (null) deviance explained. The deviance
-#' calculations incorporate weights if present in the model. The deviance is
-#' defined to be 2*(loglike_sat - loglike), where loglike_sat is the log-likelihood
-#' for the saturated model (a model with a free parameter per observation).
-#' Hence dev=1-dev/nulldev.}
-#' \item{nulldev}{Null deviance (per observation). This is defined to be
-#' 2*(loglike_sat -loglike(Null)). The null model refers to the intercept model.}
-#' \item{npasses}{Total passes over the data summed over all lambda values.}
-#' \item{jerr}{Error flag, for warnings and errors (largely for internal
-#' debugging).}
-#' \item{call}{The call that produced this object.}
-#' \item{family}{Family used for the model.}
-#' \item{nobs}{Number of observations.}
-#' 
-#' #' @return An object with class "cglassofit" and "cglasso".
-#' \item{stop_arr}{Sequence of values of information criterion for a fixed lambda.}
+#' @return An object with class \code{"cglassofit"} and \code{"cglasso"}.
+#' \describe{
+#' \item{stop_arr}{Sequence of values of the information criterion for each lambda.}
 #' \item{stop_criterion}{Stopping criterion used.}
-#' \item{min_index}{The index for lambda that minimizes the value of the information criterion.}
+#' \item{min_index}{The index for the lambda that minimizes the information criterion.}
 #' \item{lambda_grid}{Sequence of lambdas used.}
-#' \item{Theta_hat}{Estimated inverse spectral matrix for each fixed lambda. It is provided in the list.}
-#' \item{type}{Type of the formulation used, either CGALSSO-I or CGLASSO-II.}
-#' \item{scale}{Whether the spectral density matrix (covariance) or spectral coherence (coherence) is given.}
-#' \item{D}{Used scale diagonal matrix.}
+#' \item{Theta_list}{Estimated spectral precision matrix for each fixed lambda, provided as a list.}
+#' \item{type}{Type of the formulation used, either CGLASSO-I or CGLASSO-II.}
+#' \item{D}{Scale diagonal matrix used.}
+#' }
 #'
 #' @importFrom stats mvfft
 #' @useDynLib cxreg cglassocd_noscale cglassocd_scaled
 cglasso.path <- function(S,
                          D,
                          type,
-                         nobs,
+                         m,
                          lambda,
                          nlambda,
                          lambda.min.ratio,
                          W.init,
                          stopping_rule,
                          stop_criterion,
-                         maxit = maxit,
-                         thresh = thresh,
-                         trace.it = trace.it,...){
+                         maxit,
+                         thresh,
+                         trace.it,...){
   
-  ####################################################################
   # Prepare all the generic arguments
   this.call <- match.call()
   
-  ####################################################################
   p <- dim(S)[1]
-  m <- floor(nobs)
   bandwidth <- 2*m+1
   
   if (is.null(D)){
-    D <- diag(diag(S),p)
+    D <- diag(1/sqrt(Re(diag(S))))
   }
-
-  ####################################################################
+  
   # work out lambda values
   nlam <- as.integer(nlambda)
   user_lambda <- FALSE   # did user provide their own lambda values?
@@ -101,7 +75,7 @@ cglasso.path <- function(S,
       stop("lambda.min.ratio should be less than 1")
     }
     lambda_max <- max(max(Mod(S)),sqrt(log(p)/bandwidth))
-
+    
     # compute lambda sequence
     ulam <- exp(seq(log(lambda_max), log(lambda_max*lambda.min.ratio),
                     length.out = nlam))
@@ -120,7 +94,6 @@ cglasso.path <- function(S,
     pb <- utils::txtProgressBar(min = 0, max = nlam, style = 3)
   }
   
-  ####################################################################
   Theta_list <- list()
   W_list <- list()
   stop_arr <- rep(NA,nlam)
@@ -128,17 +101,14 @@ cglasso.path <- function(S,
     S_sc <- D %*% S %*% D
   }
   
-  ####################################################################
   # get feature variable names
   vnames <- colnames(S)
   if(is.null(vnames)){
     vnames <- paste("V",seq(p),sep="") 
   }
   
-  ####################################################################
   # Starting value of the best index
   i_best <- 0
-  flag <- 0
   count_na <- 0
   count_ex <- 0
   for(i in 1:nlam){
@@ -157,11 +127,11 @@ cglasso.path <- function(S,
                         theta = array(as.complex(0), c(p,p)),
                         w = array(as.complex(0), c(p,p)),
                         w0 = as.complex(S_sc),
-                        w_init = as.logical(FALSE),
+                        w_init = as.logical(0),
                         maxiter = as.integer(maxit),
                         tol = as.double(thresh),
                         h = as.integer(0),
-                        final_cycle = as.logical(FALSE)
+                        final_cycle = as.logical(0)
         )
         Theta_hat <- D %*% out$theta %*% D
         
@@ -174,11 +144,11 @@ cglasso.path <- function(S,
                         theta = array(as.complex(0), c(p,p)),
                         w = array(as.complex(0), c(p,p)),
                         w0 = as.complex(S),
-                        w_init = as.logical(FALSE),
+                        w_init = as.logical(0),
                         maxiter = as.integer(maxit),
                         tol = as.double(thresh),
                         h = as.integer(0),
-                        final_cycle = as.logical(FALSE)
+                        final_cycle = as.logical(0)
         )
         Theta_hat <- out$theta
         
@@ -229,7 +199,7 @@ cglasso.path <- function(S,
         W_list[[i]] <- NULL
       }
     }
-    ####################################################################
+    
     if (trace.it == 1) {
       utils::setTxtProgressBar(pb, i)
     }
@@ -250,7 +220,6 @@ cglasso.path <- function(S,
       }
     }
     
-    ####################################################################
     # Stopping rule for the given criterion
     c_val <- stop_arr[i]
     if(stopping_rule){
@@ -283,7 +252,7 @@ cglasso.path <- function(S,
         names(Theta_list) <- stepnames[1:i]
         ulam <- ulam[1:i]
         stop_arr <- stop_arr[1:i]
-        print(paste("The algorithm was terminated at",i,"th lambda"))
+        message(paste("The algorithm was terminated at",i,"th lambda"))
         break
       }
     }
@@ -302,7 +271,6 @@ cglasso.path <- function(S,
     i_best <- tail(which(stop_arr == min(stop_arr, na.rm = TRUE)), 1)
   }
   
-  ####################################################################
   # output
   output <- list(stop_arr = stop_arr,
                  stop_criterion = stop_criterion,
@@ -317,43 +285,6 @@ cglasso.path <- function(S,
 }
 
 ####################################################################
-#' Discrete Fourier Transform of matrix X
-#' 
-#' Computes the (normalized) discrete Fourier transform (DFT) of a matrix \code{X} row-wise using \code{mvfft}, and extracts a window of frequencies centered at a target index.
-#'
-#' @param X A numeric matrix of size \eqn{nobs \times nvar}, where DFT is applied across the rows (time points).
-#' @param j An integer index in \eqn{1,\ldots,nobs} around which the frequency window is centered.
-#' @param m A non-negative integer specifying the window half-width. The function returns \code{2m + 1} DFT components centered around \code{j}.
-#'
-#' @return A complex-valued matrix of dimension \code{(2m + 1) × nvar} representing selected DFT components of the original matrix.
-#'
-#' @export
-dft.X <- function(X, j, m){
-  n = nrow(X); p = ncol(X)
-  dft <- mvfft(X)/sqrt(2*pi*n)
-  # dft <- mvfft(X)/sqrt(n)
-  vj <- j + c(-m:m)
-  ind <- fixm(vj, n)
-  Z <- dft[ind, ]
-  return(Z)
-}
-
-####################################################################
-#' Fixes indices that fall outside the valid range \code{1:n} using circular (modulo) wrapping.
-#'
-#' @param v An integer vector of indices.
-#' @param n A positive integer giving the length of the domain; valid indices are \code{1} to \code{nobs}.
-#'
-#' @return An integer vector of the same length as \code{v}, with all values wrapped into the range \code{1} to \code{n}.
-#'
-#' @export
-fixm <- function(v, n){
-  v[v<1] = v[v<1]+n
-  v[v>n] = v[v>n]-n
-  return(v)
-}
-
-####################################################################
 rel.diff <- function(Est, Est_prev){
   return(sum(Mod(Est - Est_prev)^2)/sum(Mod(Est_prev)^2))
 }
@@ -362,10 +293,12 @@ rel.diff <- function(Est, Est_prev){
 AIC <- function(S, Theta_hat, m){
   p <- nrow(Theta_hat)
   k <- sum(!!upperTriangle(Theta_hat, diag = FALSE))
-  log_det_Theta <- sum(log(eigen(Theta_hat)$values))  # prod(eigen(Theta.hat)$values)
-  log_lik = (2*m+1)*log_det_Theta/2 -
-    sum(diag(Theta_hat%*%S))*(2*m+1)/2
-  return(Re(-2*log_lik) + 2*k)
+  v <- Re(eigen(Theta_hat)$values)
+  v[v <= 0] <- 1e-6
+  log_det_Theta <- sum(log(v))
+  log_lik <- (2*m+1)*log_det_Theta/2 -
+    Re(sum(diag(Theta_hat %*% S)))*(2*m+1)/2
+  return(-2*log_lik + 2*k)
 }
 
 ####################################################################

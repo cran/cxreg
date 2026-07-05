@@ -2,22 +2,22 @@
 % Please edit documentation in R/classo.control.R
 \name{classo.control}
 \alias{classo.control}
-\title{internal classo parameters}
+\title{Internal classo parameters}
 \usage{
 classo.control(
-  fdev = 1e-05,
-  devmax = 0.999,
-  eps = 1e-06,
-  big = 9.9e+35,
-  mnlam = 5,
-  pmin = 1e-09,
-  exmx = 250,
-  prec = 1e-10,
-  mxit = 100,
-  itrace = 0,
-  epsnr = 1e-06,
-  mxitnr = 25,
-  factory = TRUE
+  fdev = NULL,
+  devmax = NULL,
+  eps = NULL,
+  big = NULL,
+  mnlam = NULL,
+  pmin = NULL,
+  exmx = NULL,
+  prec = NULL,
+  mxit = NULL,
+  itrace = NULL,
+  epsnr = NULL,
+  mxitnr = NULL,
+  factory = FALSE
 )
 }
 \arguments{
@@ -53,8 +53,8 @@ and \code{cv.classo}. factory default = 0}
 \item{epsnr}{convergence threshold for \code{classo.fit}. factory default =
 1.0e-6}
 
-\item{mxitnr}{maximum iterations for the IRLS loop in \code{classo.fit}. factory
-default = 25}
+\item{mxitnr}{maximum iterations for the IRLS loop in \code{classo.fit}.
+factory default = 25}
 
 \item{factory}{If \code{TRUE}, reset all the parameters to the factory
 default; default is \code{FALSE}}
@@ -72,11 +72,9 @@ sets those parameters to the new values, and then silently returns. The
 values set are persistent for the duration of the R session.
 }
 \examples{
-
-classo.control(fdev = 0)  #continue along path even though not much changes
-classo.control()  # view current settings
-classo.control(factory = TRUE)  # reset all the parameters to their default
-
+classo.control(fdev = 0)  # continue along path even though not much changes
+classo.control()           # view current settings
+classo.control(factory = TRUE)  # reset all parameters to their default
 }
 \seealso{
 \code{classo}

@@ -8,23 +8,24 @@
 #' @param y Complex-valued response variable, nobs dimensional vector.
 #' @param weights Observation weights. Default is 1 for each observation.
 #' @param standardize Logical flag for x variable standardize beforehand; i.e. for n and p by nobs and nvar,
-#' \deqn{\|X_j\|=\sqrt{n} \textrm{for all }j=1,\ldots,p}
+#' \deqn{\|X_j\|=\sqrt{n} \mbox{ for all } j=1,\ldots,p}
 #' is satisfied for the input x. Default is \code{FALSE}.
 #' @param lambda A user supplied \code{lambda} sequence. Default is \code{NULL}.
 #' @param nlambda The number of \code{lambda} values. Default is 100.
 #' @param lambda.min.ratio If \code{nobs} < \code{nvars}, the default is 0.01.
-#' @param intercept Should intercept be set to zero (default=FALSE) or fitted (FALSE)? This default is reversed from \code{glmnet} package.
+#' @param intercept Should intercept be set to zero (default=FALSE) or fitted (TRUE)? This default is reversed from \code{glmnet} package.
 #' @param thresh Convergence threshold for coordinate descent. Each inner
 #' coordinate-descent loop continues until the maximum change in the objective after any
 #' coefficient update is less than thresh times the null deviance. Default value is \code{1e-10}.
 #' @param maxit Maximum number of iterations of outer loop. Default 10,000.
 #' @param trace.it Controls how much information is printed to screen. Default is
-#' \code{trace.it=0} (no information printed). If \code{trace.it=1}, a progress
+#' \code{trace.it = 0} (no information printed). If \code{trace.it = 1}, a progress
 #' bar is displayed. If \code{trace.it=2}, some information about the fitting
 #' procedure is printed to the console as the model is being fitted.
 #' @param \dots Other arguments that can be passed to \code{classo}
 #'
-#' @return An object with class "classofit" and "classo".
+#' @return An object with class \code{"classofit"} and \code{"classo"}.
+#' \describe{
 #' \item{a0}{Intercept sequence of length \code{length(lambda)}.}
 #' \item{beta}{A \code{nvars x length(lambda)} matrix of coefficients, stored in
 #' sparse matrix format.}
@@ -41,12 +42,9 @@
 #' Hence dev.ratio=1-dev/nulldev.}
 #' \item{nulldev}{Null deviance (per observation). This is defined to be
 #' 2*(loglike_sat -loglike(Null)). The null model refers to the intercept model.}
-#' \item{npasses}{Total passes over the data summed over all lambda values.}
-#' \item{jerr}{Error flag, for warnings and errors (largely for internal
-#' debugging).}
 #' \item{call}{The call that produced this object.}
-#' \item{family}{Family used for the model.}
 #' \item{nobs}{Number of observations.}
+#' }
 #'
 #' @useDynLib cxreg classocd_warm classocd_warm_screen
 classo.path <- function(x,y,
@@ -60,7 +58,6 @@ classo.path <- function(x,y,
                         maxit = 100000,
                         trace.it = 0, ...){
   
-  ####################################################################
   # Prepare all the generic arguments
   this.call <- match.call()
   control <- classo.control()
@@ -80,18 +77,8 @@ classo.path <- function(x,y,
     nvars <- np[2]
   }
   
-  ####################################################################
   # get feature variable names
   vnames <- colnames(x)
-  # Unlike glmnet, we treat the intercept term by merging them into the design matrix
-  # and treat it p+1-dimensional object.
-  if (intercept){
-    x <- cbind(rep(1,nobs),x)
-    nvars <- np[2] + 1
-  }else{
-    nvars <- np[2]
-  }
-  
   if(is.null(vnames)){
     if (intercept){
       vnames <- c("intercept",paste("V",seq(nvars),sep=""))
@@ -100,7 +87,6 @@ classo.path <- function(x,y,
     }
   }
   
-  ####################################################################
   # check weights
   if(is.null(weights)) {
     weights <- rep(1,nobs)
@@ -110,7 +96,6 @@ classo.path <- function(x,y,
   }
   weights <- as.double(weights)
   
-  ####################################################################
   # standardize x if necessary
   if (intercept) {
     meansd <- weighted_mean_sd(x, weights)
@@ -120,44 +105,11 @@ classo.path <- function(x,y,
   }
   
   if (standardize) {
-    for (j in 1:nvars){
+    for (j in seq_len(nvars)){
       x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
     }
   }
   
-  ####################################################################
-  # check on limits
-  control <- classo.control()
-  ####################################################################
-  # if (thresh >= control$epsnr)
-  #   warning("thresh should be smaller than glmnet.control()$epsnr",
-  #           call. = FALSE)
-  # 
-  # if(any(lower.limits > 0)){ stop("Lower limits should be non-positive") }
-  # if(any(upper.limits < 0)){ stop("Upper limits should be non-negative") }
-  # lower.limits[lower.limits == -Inf] = -control$big
-  # upper.limits[upper.limits == Inf] = control$big
-  # if (length(lower.limits) < nvars) {
-  #   if(length(lower.limits) == 1) lower.limits = rep(lower.limits, nvars) else
-  #     stop("Require length 1 or nvars lower.limits")
-  # } else lower.limits = lower.limits[seq(nvars)]
-  # if (length(upper.limits) < nvars) {
-  #   if(length(upper.limits) == 1) upper.limits = rep(upper.limits, nvars) else
-  #     stop("Require length 1 or nvars upper.limits")
-  # } else upper.limits = upper.limits[seq(nvars)]
-  # 
-  # if (any(lower.limits == 0) || any(upper.limits == 0)) {
-  #   ###Bounds of zero can mess with the lambda sequence and fdev;
-  #   ###ie nothing happens and if fdev is not zero, the path can stop
-  #   fdev <- glmnet.control()$fdev
-  #   if(fdev!= 0) {
-  #     glmnet.control(fdev = 0)
-  #     on.exit(glmnet.control(fdev = fdev))
-  #   }
-  # }
-  ####################################################################
-
-  ####################################################################
   # get null deviance and lambda max
   start_val <- get_start(x, y, weights, intercept)
   
@@ -186,8 +138,8 @@ classo.path <- function(x,y,
   if (trace.it == 1) {
     pb <- utils::txtProgressBar(min = 0, max = nlam, style = 3)
   }
-
-    
+  
+  
   if (intercept){
     a0 <- rep(NA, length = nlam)
   }
@@ -201,17 +153,13 @@ classo.path <- function(x,y,
     if (k > 1) {
       cur_lambda <- ulam[k]
     } else {
-      ####################################################################
-      # cur_lambda <- ifelse(user_lambda, ulam[k], control$big)
-      cur_lambda <- ifelse(user_lambda, ulam[k], ulam[k])
-      ####################################################################
+      cur_lambda <- ifelse(user_lambda, ulam[k], control$big)
     }
     
     if (trace.it == 2) {
       cat("Fitting lambda index", k, ":", ulam[k], fill = TRUE)
     }
     
-    ####################################################################
     # changes of classocd_warm & classocd_warm_screen:
     # 1. add weights
     # 2. add thresh and  maxit
@@ -240,7 +188,7 @@ classo.path <- function(x,y,
                       b = as.complex(rep(0, nvars))
       )
     }
-    ####################################################################
+
     if (trace.it == 1) {
       utils::setTxtProgressBar(pb, k)
     }
@@ -281,7 +229,7 @@ classo.path <- function(x,y,
     dev.ratio <- dev.ratio[1:k]
     ulam <- ulam[1:k]
   }
-    
+  
   # output
   stepnames <- paste0("s", 0:(length(ulam) - 1))
   out <- list()
@@ -302,55 +250,45 @@ classo.path <- function(x,y,
   out$call <- this.call
   out$nobs <- nobs
   
-  classofit <- list(
-    call = this.call,
-    Df = out$df,
-    dev.ratio = out$dev.ratio,
-    lambda = out$lambda
-  )
   class(out) <- c("classofit","classo")
   
   return(out)
 }
-  
+
 
 ####################################################################
-dev_comp <- function(x,y,weights,beta) {
-  return(sum(c(weights,weights) %*% (c(Re(y),Im(y)) - rbind((Re(x) %*% Re(beta)),(Im(x) %*% Im(beta))))^2))
+dev_comp <- function(x, y, weights, beta) {
+  resid <- y - x %*% beta
+  return(sum(weights * (Re(resid)^2 + Im(resid)^2)))
 }
-  
+
 ####################################################################
 get_start <- function(x,y,weights,intercept) {
   
-  ####################################################################
   nobs <- nrow(x)
   nvars <- ncol(x)
   
   # compute mu and null deviance
   if (intercept) {
-    mu <- rep(weighted.mean(y,weights), times = nobs)
+    mu <- rep(sum(weights * y) / sum(weights), times = nobs)
   } else {
     mu <- rep(0, times = nobs)
   }
   
-  nulldev <- sum(c(weights,weights) %*% (c(Re(y),Im(y)) - c(Re(mu),Im(mu)))^2)
+  nulldev <- sum(weights * (Re(y - mu)^2 + Im(y - mu)^2))
   
-  ####################################################################
   # compute lambda max
-  r <- y - mu
-  eta <- mu
-  v <- rep.int(1, length(mu))
-  m.e <- rep.int(1, length(eta))
-  w <- weights / sum(weights)
-  rv <- r / v * m.e * w
-  g <- abs(t(rv) %*% x)
+  r   <- y - mu
+  w   <- weights / sum(weights)
+  rv  <- r * w
+  g   <- Mod(Conj(t(rv)) %*% x)
   lambda_max <- max(g)
   
   return(list(nulldev = nulldev, 
-       mu = mu, 
-       lambda_max = lambda_max))
+              mu = mu, 
+              lambda_max = lambda_max))
 }
-  
+
 
 ####################################################################
 weighted_mean_sd <- function(x, weights=rep(1,nrow(x))){
@@ -360,10 +298,3 @@ weighted_mean_sd <- function(x, weights=rep(1,nrow(x))){
   xv[xv < 10*.Machine$double.eps] <- 0
   list(mean = xm, sd = sqrt(xv))
 }
-  
-  
-  
-  
-  
-  
-  

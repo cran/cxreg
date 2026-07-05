@@ -1,0 +1,359 @@
+---
+title: "An Introduction to `cxreg`"
+author:
+  - Younghoon Kim
+  - Navonil Deb
+  - Sumanta Basu
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: pdf_document
+vignette: >
+  %\VignetteIndexEntry{An Introduction to cxreg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+link-citations: true
+bibliography: cxreg_refs.bib
+---
+
+```{r include=FALSE}
+hook_output <- knitr::knit_hooks$get("output")
+knitr::knit_hooks$set(output = function(x, options) {
+  if (!is.null(n <- options$out.lines)) {
+    x <- xfun::split_lines(x)
+    if (length(x) > n) {
+      x <- c(head(x, n), "....\n")
+    }
+    x <- paste(x, collapse = "\n")
+  }
+  hook_output(x, options)
+})
+```
+
+## Introduction
+
+\texttt{cxreg} is a package that fits complex-valued penalized regressions (Lasso) and Gaussian likelihoods (graphical Lasso) using an exact pathwise coordinate descent method. Similar to the well-known package \texttt{glmnet} [-@friedman2010regularization] for Lasso in real value settings, \texttt{cxreg} computes the regularization path for complex-valued linear regression with a lasso penalty, referred to as \texttt{classo}, over a grid of values for the regularization parameter lambda. Likewise, to fit complex-valued Graphical Lasso models [-@friedman2008sparse], the regularization path is computed via \texttt{cglasso}. The package includes methods for prediction, cross-validation functions, printing and plotting utilities, as well as fitting for both model types.
+
+The authors of \texttt{cxreg} are Navonil Deb and Sumanta Basu, with contributions from Younghoon Kim. The R package is maintained by Younghoon Kim.
+
+This vignette describes basic usage of functions related to \texttt{classo} and \texttt{cglasso} models in \texttt{cxreg} package in R. There is an original description of the algorithm that should be useful:
+
+* ["Regularized estimation of sparse spectral precision matrices"](https://arxiv.org/abs/2401.11128)
+
+
+\texttt{classo} solves the following problem: For $Y\in\mathbb{C}^n$ and $X\in\mathbb{C}^{n \times p}$,
+
+$$
+\min_{\beta \in \mathbb{C}^p} \frac{1}{2n} \|Y - X \beta\|_2^2 + \lambda\|\beta\|_1,
+$$
+
+over a grid of values of $\lambda$ covering the entire range of possible solutions. Here, since the absolute of complex-values means a complex modulus, $\beta\in\mathbb{C}^p$ so that the $\ell_1$-penalty can be viewed as
+
+$$
+\|\beta\|_1 = \sum_{j=1}^p |\beta_j| = \sum_{j=1}^p\|\mathrm{Re}(\beta_j) + \mathrm{Im}(\beta_j)\|_2,
+$$
+
+which is a group Lasso with $p$ groups, each of size 2.
+
+
+Similarly, \texttt{cglasso} seeks the minimizer of Whittle’s approximate likelihood [-@Whittle1951]. For a $p$-dimensional Gaussian time series ${X_t}_{t=1}^n$, one can compute the $p$-dimensional complex-valued discrete Fourier transforms (DFT) at the Fourier frequencies $\omega_j = 2\pi j / n$, where $j \in F_n := \left\{- \left[\frac{n-1}{2}\right], \ldots, \left[\frac{n}{2}\right] \right\}$:
+
+$$
+d_j := d(\omega_j) = \frac{1}{\sqrt{n}}\sum_{t=1}^n X_t \exp(-i t \omega_j).
+$$
+
+Note that $d_j \sim \mathcal{N}_{\mathbb{C}}(0, f(\omega_j))$, where $f(\omega_j)$ is the spectral density, commonly estimated by averaging the periodogram $I(\omega_j) = d(\omega_j)d^{\dagger}(\omega_j)$ over a bandwidth of $2m+1$ frequencies:
+
+$$
+\hat{f}(\omega_j) = \frac{1}{2\pi(2m+1)}\sum_{|k|\leq m}I(\omega_{j+k}), \quad j\in F_n. \tag{1}
+$$
+
+The approximation to the negative log-likelihood then takes the form:
+
+$$
+\sum_{k=j-m}^{j+m} \log\det f^{-1}(\omega_j) - \sum_{k=j-m}^{j+m} d_{k}^{\dagger} f^{-1}(\omega_j)d_k.
+$$
+Finally, by rearranging the components used to construct $\hat{f}(\omega_j)$ and adding an $\ell_1$-penalty on the off-diagonal entries of the inverse spectral density, $\|\Theta\|_{1,\mathrm{off}} = \sum_{k \neq \ell} |\Theta_{k,\ell}|=\sum_{k \neq \ell}\|\mathrm{Re}(\Theta_{k,\ell}) + \mathrm{Im}(\Theta_{k,\ell})\|_2$, one obtains the estimator:
+
+$$
+\hat{\Theta}_j := \hat{\Theta}(\omega_j) = \arg\min_{\Theta \in \mathcal{H}_{++}^p} \left\{  \mathrm{trace}(\Theta\hat{f}(\omega_j))  - \log\det\Theta + \lambda \|\Theta\|_{1,\mathrm{off}} \right\},
+$$
+where $\mathcal{H}_{++}^p$ represents the set of $p \times p$ symmetric positive definite matrices. Throughout the illustrative example in this document, we drop the subscript $j$ and focus on deriving $\hat{\Theta}$ for a given $\hat{f}$.
+
+
+From a numerical standpoint, there are two formulations for complex-valued graphical Lasso (see Section 5 in [-@deb2024regularized]), where a similar argument can be made in standard graphical Lasso (e.g., [-@jankova2018inference]).
+
+
+\textbf{CGLASSO-sc1}: The first formulation is to solve the complex-valued graphical Lasso with scaled spectral density matrix (called spectral coherence), $\hat{R} = D^{-1}\hat{f}D^{-1}$ with $D^2 = \mathrm{diag}(\hat{f}_{1,1},\ldots,\hat{f}_{p,p})$, and scale back once the estimates are obtained. The corresponding optimization problem is
+
+
+$$
+\hat{\Theta} =  D^{-1} \hat{K} D^{-1}, 
+\quad 
+\hat{K} = \arg\min_{\Theta\in \mathcal{H}_{++}^p} \left\{ \mathrm{trace}(\hat{R} \Theta) - \log\det \Theta  + \lambda \|\Theta\|_{\mathrm{1,off}}\right\}. \tag{CGLASSO-sc1}
+$$
+
+This is equivalent to a equation (9) in [-@jankova2018inference] for the graphical lasso with weighted penalty. The entry-wise weights determined by $D$ as $\lambda_{k,\ell} \propto D_{k,k}D_{\ell,\ell} = \sqrt{ \hat{f}_{k,k} \hat{f}_{\ell,\ell}}$.
+
+
+\textbf{CGLASSO-sc2}: The second formulation takes the spectral density as the original input. In each iteration of \texttt{CLASSO.COV} within Algorithm 3 in [-@deb2024regularized], we scale the partitioned $W$, working inverse spectral density, with the corresponding diagonal entries of the estimated spectral density. The Lasso outputs are scaled back to obtain rows and columns of $W$. Specifically, we implement the following update for $k$th row and column:
+
+
+$$
+\begin{aligned}
+W_{11}^{\mathrm{scl}} &\leftarrow D_{11}^{-1} W_{11} D_{11}^{-1}, \quad D_{11}^2 = \mathrm{diag}(W_{11}) = \mathrm{diag}(P_{11}), \quad \mathbf{p}_{12}^{\mathrm{scl}} \leftarrow D_{11}^{-1} \mathbf{p}_{12}, \\
+\hat{\beta}^{\mathrm{scl}} &= \mathrm{CLASSO.COV}(W_{11}^{\mathrm{scl}}, \mathbf{p}_{12}^{\mathrm{scl}}, \mathcal{B}^{(0)}_{\cdot, k}, \lambda), \\
+\mathcal{B}^{(0)}_{\cdot,k} &\leftarrow \hat{\beta}^{\mathrm{scl}}, \quad
+\hat{\beta} \leftarrow D_{11}^{-1} \hat{\beta}^{\mathrm{scl}}, \quad
+\mathbf{w}_{12} \leftarrow W_{11} \hat{\beta},
+\end{aligned}
+\tag{CGLASSO-sc2}
+$$
+
+where the scaling matrix $D_{11}$ is similar to $D$ is CGLASSO-sc1, except that the last diagonal entry $D_{p,p}$ is disregarded in every update due to absence of the last row and column.
+
+
+## Installation
+
+Like other R packages on Github, it can be downloaded by the command:
+
+```{r, eval=FALSE, message=FALSE}
+library(devtools)
+devtools::install_github("yk748/cxreg")
+```
+
+
+## Example: classo
+
+The purpose of this section is to give users a general sense of the package regarding classo. We will briefly go over the main functions, basic operations and outputs. \texttt{cxreg} can be loaded using the `library` command:
+
+```{r}
+library(cxreg)
+```
+
+We load a set of data created beforehand for illustration:
+
+```{r}
+data(classo_example)
+x <- classo_example$x
+y <- classo_example$y
+```
+
+Note that "x" is already standardized, which makes the columns in $X$ orthogonal. The \texttt{classo} provides the orthogonalization, and \texttt{standardization=TRUE} is the default. The necessity of the standardization is described in the original paper [-@deb2024regularized].
+
+We fit the model using the most basic call to \texttt{classo}. In addition to standardization, the \texttt{intercept=FALSE} is used as a default, which means the complex-valued constant is not considered. This is another difference from the \texttt{glmnet} package.
+
+```{r}
+fit <- classo(x,y)
+```
+
+\texttt{fit} is an object of class \texttt{classo} that contains all the relevant information of the fitted model for further use. Various methods are provided for the object such as \texttt{plot}, \texttt{coef}, and \texttt{predict}, just like \texttt{glmnet} package.
+
+We can visualize the coefficients by executing the 'plot' method. First, we plot \texttt{fit} against the log $\lambda$ values with labels:
+
+```{r}
+plot(fit, xvar="lambda", label=TRUE)
+```
+
+There are more types of $x$-axis, similar to those in \texttt{glmnet}. If "norm" is chosen, the values of the $x$-axis become $\ell_1$ (modulus) of the coefficients:
+
+```{r}
+plot(fit, xvar="norm", label=TRUE)
+```
+
+When "dev" is chosen, the percentage deviance explained by the model is used. Similar to those in \texttt{glmnet}, we can observe the blowing up phenomenon at the end of the curves:
+
+```{r}
+plot(fit, xvar="dev", label=TRUE)
+```
+
+Unlike \texttt{glmnet}, the real (Re) and imaginary (Im) parts of the coefficients are displayed separately. It shows the path of its coefficients in the two parts separately against the $\ell_1$-norm of the whole coefficient vector as $\lambda$ varies. Users may also wish to annotate the curves: this can be done by setting "label = TRUE" in the plot command.
+
+We can obtain the model coefficients at one or more $\lambda$'s within the range of the sequence. Similar to \texttt{glmnet}, if $s$ (lambda value) is not included in the sequence, only approximate values are provided:
+
+```{r}
+any(fit$lambda == 0.1)
+coef(fit, s=0.1, exact=FALSE)
+```
+
+However, when "exact = TRUE", the data should be provided to create the original fit, as it merged to the original fit. In this case, both $x$ and $y$ need to be supplied as named arguments:
+
+```{r}
+coef(fit, s=0.1, exact=TRUE, x=x, y=y)
+```
+
+Users can also make predictions at specific $\lambda$'s with new input data: Note that the third line in the following chunk is about standardization, whose purpose is mentioned above. Here, 'response' means that predicted values of $y$.
+
+```{r}
+set.seed(29)
+nx <- array(rnorm(5*20), c(5,20)) + (1+1i) * array(rnorm(5*20), c(5,20))
+for (j in 1:20) {
+  nx[,j] <- nx[,j] / sqrt(mean(Mod(nx[,j])^2))
+}
+predict(fit, newx = nx, s = c(0.1, 0.05), type="response")
+```
+
+The other two output types are \texttt{coefficients} and \texttt{nonzero}, which are analogous to those in \texttt{glmnet}:
+
+```{r}
+predict(fit, newx = nx, s = c(0.1, 0.05), type="coefficients")
+```
+
+```{r}
+predict(fit, newx = nx, s = c(0.1, 0.05), type="nonzero")
+```
+
+The function \texttt{classo} returns a sequence of models for the users to choose from. In many cases, users may prefer the software to select one of them. Cross-validation is perhaps the simplest and most widely used method for that task. \texttt{cv.classo} is the main function to do cross-validation here, along with various supporting methods such as plotting and prediction.
+
+```{r}
+cvfit <- cv.classo(x,y,trace.it = 1)
+```
+```{r}
+print(cvfit)
+```
+
+
+\texttt{cv.classo} returns a 'cv.classo' object, a list with all the ingredients of the cross-validated fit.
+
+```{r}
+plot(cvfit)
+```
+
+This plots the cross-validation curve (red dotted line) along with upper and lower standard deviation curves along the $\lambda$ sequence (error bars). Two special values along the $\lambda$ sequence are indicated by the vertical dotted lines. "lambda.min" is the value of $\lambda$ that gives minimum mean cross-validated error, while "lambda.lse" is the value of $\lambda$ that gives the most regularized model such that the cross-validated error is within one standard error of the minimum.
+
+We can use the following code to get the value of "lambda.min" and the model coefficients at that value of $\lambda$:
+
+```{r}
+cvfit$lambda.min
+```
+
+```{r}
+coef(cvfit, s = "lambda.min")
+```
+
+To get the corresponding values at "lambda.1se", simply replace
+"lambda.min" with "lambda.1se" above, or omit the "s" argument, since
+"lambda.1se" is the default.
+
+Note that unlike \texttt{glmnet} package, the coefficients are not represented in sparse matrix format, rather they are in the dense format. This is because of the traits of complex values in the function.
+
+Predictions can be made based on the fitted \texttt{cv.glmnet} object as well. The code below gives predictions for the new input matrix "newx" at "lambda.min":
+
+```{r}
+predict(cvfit, newx = x[1:5,], s = "lambda.min")
+```
+
+This concludes the basic usage of \texttt{classo}.
+
+
+
+## Example: cglasso
+
+In this section, we illustrate our function \texttt{cglasso} for the two variants described in Section above. Again, we load a set of data created beforehand for illustration:
+
+```{r}
+data(cglasso_example)
+f_hat <- cglasso_example$f_hat
+n     <- cglasso_example$n
+m     <- floor(sqrt(n))   # half-bandwidth used to compute f_hat
+```
+
+where the number of variables and sample size used in this example are $p=30$ and $n=500$, respectively, and the covariance matrix of the white noise process $\{X_t\}_{t=1}^n$ is
+
+$$
+\Sigma = C^{-1}=(C_{k \ell})^{-1}, \quad C_{kk} = 0.7, \ C_{k,k-1}=C_{k-1,k} = 0.3.
+$$
+Then the estimated spectral density $\hat{f}$ is obtained by DFT in (1).
+
+
+First, consider CGLASSO-sc1: It is called by using "type="I"".
+
+```{r}
+fit_cglasso_I <- cglasso(S=f_hat, m=m, type="I")
+```
+
+Now, let's look at the example of CGLASSO-sc2: 
+
+```{r}
+fit_cglasso_II <- cglasso(S=f_hat, m=m, type="II", nlambda=30, stop_criterion = "AIC")
+```
+
+Here, we change the stopping criterion from "EBIC" to "AIC". Although the maximum number of paramters "nlambda" is set 30, due to the early termination, not all 30 lambdas created inside the function was not explored. However, if "stopping_rule=FALSE", cases of all 50 lambdas (by default) are explored:
+
+```{r}
+fit_cglasso_another <- cglasso(S=f_hat, m=m, type="II", stopping_rule = FALSE)
+fit_cglasso_another$lambda_grid
+```
+
+Finally, we can plot the heatmap using the list of estimated spectral precision matrices and specify the index to select a particular matrix from the list. The argument \texttt{type} determines whether the display shows the real part (\texttt{real}), imaginary part (\texttt{imaginary}), both (using \texttt{both}. in parallel), or the modulus (\texttt{mod}).
+
+```{r}
+plot(fit_cglasso_I, index=fit_cglasso_I$min_index, type="mod",       label=TRUE)
+plot(fit_cglasso_I, index=fit_cglasso_I$min_index, type="both",      label=TRUE)
+plot(fit_cglasso_II, index=fit_cglasso_II$min_index, type="real",    label=FALSE)
+plot(fit_cglasso_II, index=fit_cglasso_II$min_index, type="imaginary", label=FALSE)
+```
+
+This concludes the basic usage of \texttt{cglasso}.
+
+
+## Example: Sparse Spectral Precision Matrix Estimation
+
+As the real-data example from the time series, the workflow using this package should cover these steps:
+
+### Step 1 — Generate a multivariate Gaussian white noise process:
+
+```{r}
+library(mvtnorm)
+set.seed(1010)
+p <- 10    # number of variables
+n <- 500   # sample size
+
+# sparse precision matrix (tridiagonal)
+C <- diag(0.7, p)
+C[row(C) == col(C) + 1] <- 0.3
+C[row(C) == col(C) - 1] <- 0.3
+Sigma <- solve(C)
+
+# generate multivariate Gaussian time series
+X_t <- rmvnorm(n = n, mean = rep(0, p), sigma = Sigma)
+```
+
+### Step 2 — Compute the DFT and smoothed periodogram:
+
+```{r}
+# compute DFT at a specific Fourier frequency j
+m <- floor(sqrt(n))   # bandwidth
+j <- 1                # frequency index
+d_j <- dft.j(X_t, j, m)
+
+# estimate spectral density via smoothed periodogram
+f_j_hat <- t(d_j) %*% Conj(d_j) / (2*m + 1)
+```
+
+### Step 3 — Estimate sparse spectral precision matrix via \texttt{cglasso}:
+
+```{r}
+fit_sim <- cglasso(S = f_j_hat, m = m, type = "I")
+```
+
+### Step 4 — Visualize the estimated spectral precision matrix:
+
+```{r}
+plot(fit_sim,
+     index = fit_sim$min_index,
+     type  = "mod",
+     label = TRUE)
+```
+
+### Step 5 — Compare to the true precision matrix:
+
+```{r}
+# selected lambda
+fit_sim$lambda_grid[fit_sim$min_index]
+
+# number of nonzero off-diagonal entries
+Theta_est <- fit_sim$Theta_list[[fit_sim$min_index]]
+sum(Mod(Theta_est[row(Theta_est) != col(Theta_est)]) > 1e-6)
+```
+
+
+

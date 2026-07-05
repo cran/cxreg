@@ -20,13 +20,13 @@ features of cxreg.
 data(classo_example)
 x <- classo_example$x
 y <- classo_example$y
-classo(x,y)
+classo(x, y)
 
 data(cglasso_example)
 f_hat <- cglasso_example$f_hat
-n <- cglasso_example$n
-cglasso(S=f_hat,type="I",nobs=n)
-cglasso(S=f_hat,type="II",nobs=n)
+m     <- floor(sqrt(cglasso_example$n))
+cglasso(S = f_hat, m = m, type = "I")
+cglasso(S = f_hat, m = m, type = "II")
 }
 }
 \keyword{datasets}

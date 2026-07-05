@@ -2,8 +2,7 @@
 % Please edit documentation in R/predict.cv.classo.R
 \name{predict.cv.classo}
 \alias{predict.cv.classo}
-\alias{coef.cv.classo}
-\title{make predictions from a "cv.classo" object.}
+\title{Make predictions from a "cv.classo" object}
 \usage{
 \method{predict}{cv.classo}(object, newx, s = c("lambda.1se", "lambda.min"), ...)
 }
@@ -11,36 +10,32 @@
 \item{object}{Fitted \code{"cv.classo"} object.}
 
 \item{newx}{Matrix of new values for \code{x} at which predictions are to be
-made. Must be a matrix}
+made. Must be a complex-valued matrix.}
 
 \item{s}{Value(s) of the penalty parameter \code{lambda} at which
-predictions are required. Default is the value \code{s="lambda.1se"} stored
-on the CV \code{object}. Alternatively \code{s="lambda.min"} can be used. If
-\code{s} is numeric, it is taken as the value(s) of \code{lambda} to be
-used. (For historical reasons we use the symbol 's' rather than 'lambda' to
-reference this parameter)}
+predictions are required. Default is \code{"lambda.1se"}. Alternatively
+\code{"lambda.min"} can be used, or a numeric value (or vector) of
+\code{lambda} directly.}
 
-\item{\dots}{Not used. Other arguments to predict.}
+\item{\dots}{Additional arguments passed to the \code{predict} method for
+\code{"classo"} objects.}
 }
 \value{
-The object returned depends on the \dots{} argument which is passed
-on to the \code{predict} method for \code{classo} objects.
+The object returned by \code{\link{predict.classo}} for the chosen
+\code{s}: a complex-valued matrix of predicted values, or a coefficient
+matrix, depending on \code{type}.
 }
 \description{
 This function makes predictions from a cross-validated classo model, using
-the stored \code{"classo.fit"} object.
-}
-\details{
-This function makes it easier to use the results of cross-validation to make
-a prediction.
+the stored \code{"classo.fit"} object and a chosen lambda value.
 }
 \seealso{
-\code{classo}, and \code{print}, and \code{coef} methods, and
-\code{cv.classo}.
+\code{\link{classo}}, \code{\link{predict.classo}},
+\code{\link{coef.cv.classo}}, \code{\link{cv.classo}}.
 }
 \author{
 Younghoon Kim, Navonil Deb, Sumanta Basu \cr Maintainer:
-Younghoon Kim \href{mailto:yk748@cornell.edu}{yk748@cornell.edu}
+Younghoon Kim \href{mailto:ykim124@ua.edu}{ykim124@ua.edu}
 }
 \keyword{models}
 \keyword{regression}

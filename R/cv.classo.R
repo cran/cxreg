@@ -42,8 +42,10 @@
 #' This means these fits are computed with this observation and the rest of its fold omitted.
 #' The \code{foldid} vector is also returned. Default is keep=FALSE.
 #' @param parallel If \code{TRUE}, use parallel \code{foreach} to fit each
-#' fold. Must register parallel before hand, such as \code{doMC} or others.
-#' Currently it is unavailable.
+#' fold. Must register a parallel backend before calling, e.g. via
+#' \code{doParallel::registerDoParallel()} or
+#' \code{doMC::registerDoMC()}.
+#' Limited progress tracing is available when \code{parallel = TRUE}.
 #' @param trace.it If \code{trace.it=1}, then progress bars are displayed;
 #' useful for big models that take a long time to fit. Limited tracing if
 #' \code{parallel=TRUE}
@@ -51,34 +53,36 @@
 #'
 #' @return an object of class \code{"cv.classo"} is returned, which is a list
 #' with the ingredients of the cross-validation fit.
+#' \describe{
 #' \item{lambda}{the values of \code{lambda} used in the fits.}
 #' \item{cvm}{The mean cross-validated error - a vector of length \code{length(lambda)}.}
 #' \item{cvsd}{estimate of standard error of \code{cvm}.}
 #' \item{cvup}{upper curve = \code{cvm+cvsd}.}
 #' \item{cvlo}{lower curve = \code{cvm-cvsd}.}
 #' \item{nzero}{number of non-zero coefficients at each \code{lambda}.}
-#' \item{name}{a text string indicating type of measure for plotting purposes).}
+#' \item{name}{a text string indicating type of measure for plotting purposes.}
 #' \item{classo.fit}{a fitted classo object for the full data.}
 #' \item{lambda.min}{value of \code{lambda} that gives minimum \code{cvm}.}
 #' \item{lambda.1se}{largest value of \code{lambda} such that error is within 1 standard error of the minimum.}
 #' \item{fit.preval}{if \code{keep=TRUE}, this is the array of pre-validated fits. Some entries can be \code{NA},
-#' if that and subsequent values of \code{lambda} are not reached for that fold}
-#' \item{foldid}{if \code{keep=TRUE}, the fold assignments used}
+#' if that and subsequent values of \code{lambda} are not reached for that fold.}
+#' \item{foldid}{if \code{keep=TRUE}, the fold assignments used.}
 #' \item{index}{a one column matrix with the indices of \code{lambda.min} and \code{lambda.1se} in the sequence of coefficients, fits etc.}
+#' }
 #' @author Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
-#' \email{yk748@cornell.edu}
+#' \email{ykim124@ua.edu}
 #' @seealso \code{classo} and \code{plot} and \code{coef} methods for \code{"cv.classo"}.
 #' @examples
 #' \donttest{
 #' set.seed(1010)
-#' n = 1000
-#' p = 200
-#' x = array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
-#' for (j in 1:p) x[,j] = x[,j] / sqrt(mean(Mod(x[,j])^2))
-#' e = rnorm(n) + (1+1i) * rnorm(n)
-#' b = c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
-#' y = x %*% b + e
-#' cv.test = cv.classo(x,y)
+#' n <- 1000
+#' p <- 200
+#' x <- array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
+#' for (j in 1:p) x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
+#' e <- rnorm(n) + (1+1i) * rnorm(n)
+#' b <- c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
+#' y <- x %*% b + e
+#' cv.test <- cv.classo(x, y)
 #' }
 #' @export cv.classo
 cv.classo <- function (x, y,
@@ -90,19 +94,19 @@ cv.classo <- function (x, y,
                        keep = FALSE,
                        parallel = FALSE,
                        trace.it=0, ...){
-
+  
   # ------------------------------------------------ #
   # type.measure <- match.arg(type.measure)
   type.measure <- "mse"
   alignment <- match.arg(alignment)
   if (!is.null(lambda) && length(lambda) < 2){
-    stop("Need more than one value of lambda for cv.glasso")
+    stop("Need more than one value of lambda for cv.classo")
   }
   if (!is.null(lambda) && alignment=="fraction"){
     warning("fraction of path alignment not available if lambda given as argument; switched to alignment=`lambda`")
     alignment <- "lambda"
   }
-
+  
   # ------------------------------------------------ #
   N <- nrow(x)
   if (is.null(weights)){
@@ -110,15 +114,16 @@ cv.classo <- function (x, y,
   } else {
     weights <- as.double(weights)
   }
-
+  
   # ------------------------------------------------ #
   y <- drop(y)
   cv.call <- classo.call <- match.call(expand.dots = TRUE)
-  which <- match(c("type.measure","nfolds","foldid","keep"), names(classo.call), FALSE)
+  which <- match(c("type.measure","nfolds","foldid","alignment","keep","parallel"),
+                 names(classo.call), FALSE)
   if (any(which)){
     classo.call <- classo.call[-which]
   }
-
+  
   # ------------------------------------------------ #
   classo.call[[1]] <- as.name("classo")
   if(classo.control()$itrace){
@@ -129,18 +134,18 @@ cv.classo <- function (x, y,
       on.exit(classo.control(itrace=0))
     }
   }
-
+  
   # ------------------------------------------------ #
   if (is.null(foldid)){
     foldid <- sample(rep(seq(nfolds), length = N))
   }else {
     nfolds <- max(foldid)
   }
-
+  
   if (nfolds < 3){
     stop("nfolds must be bigger than 2; nfolds=10 recommended")
   }
-
+  
   # ------------------------------------------------ #
   # Call cv.classo.raw
   cv.classo.raw(x,y,weights,lambda,type.measure,nfolds,foldid,

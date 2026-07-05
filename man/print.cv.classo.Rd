@@ -20,11 +20,10 @@ The matrix above is silently returned
 Print a summary of the results of cross-validation for a classo model.
 }
 \details{
-A summary of the cross-validated fit is produced, slightly different for a
-'cv.relaxed' object than for a 'cv.classo' object.  Note that a 'cv.relaxed'
-object inherits from class 'cv.classo', so by directly invoking
-\code{print.cv.classo(object)} will print the summary as if
-\code{relax=TRUE} had not been used.
+A two-row table is printed showing the optimal \code{lambda} values
+selected by the minimum CV error (\code{lambda.min}) and the 1-standard-error
+rule (\code{lambda.1se}), along with the corresponding CV error, its standard
+error, and the number of nonzero coefficients.
 }
 \seealso{
 \code{classo}, \code{predict} and \code{coef} methods.

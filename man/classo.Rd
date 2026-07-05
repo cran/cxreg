@@ -49,7 +49,7 @@ in the \code{nobs < nvars} case.}
 
 \item{standardize}{Logical flag for x variable standardization, prior to
 fitting the model sequence. The coefficients are always returned on the
-original scale. Default is \code{standardize=TRUE}.}
+original scale. Default is \code{standardize = TRUE}.}
 
 \item{intercept}{Should intercept(s) set to zero (default=FALSE) or be fitted (TRUE).}
 
@@ -66,7 +66,8 @@ useful for big models that take a long time to fit.}
 \item{\dots}{Other arguments that can be passed to \code{classo}}
 }
 \value{
-An object with class "classofit" and "classo".
+An object with class \code{"classofit"} and \code{"classo"}.
+\describe{
 \item{a0}{Intercept sequence of length \code{length(lambda)}.}
 \item{beta}{A \code{nvars x length(lambda)} matrix of coefficients, stored in
 sparse matrix format.}
@@ -76,19 +77,16 @@ sparse matrix format.}
 largest lambda reported does not quite give the zero coefficients reported
 (lambda=inf would in principle). Instead, the largest lambda for alpha=0.001
 is used, and the sequence of lambda values is derived from this.}
-\item{dev}{The fraction of (null) deviance explained. The deviance
+\item{dev.ratio}{The fraction of (null) deviance explained. The deviance
 calculations incorporate weights if present in the model. The deviance is
 defined to be 2*(loglike_sat - loglike), where loglike_sat is the log-likelihood
 for the saturated model (a model with a free parameter per observation).
-Hence dev=1-dev/nulldev.}
+Hence dev.ratio=1-dev/nulldev.}
 \item{nulldev}{Null deviance (per observation). This is defined to be
 2*(loglike_sat -loglike(Null)). The null model refers to the intercept model.}
-\item{npasses}{Total passes over the data summed over all lambda values.}
-\item{jerr}{Error flag, for warnings and errors (largely for internal
-debugging).}
 \item{call}{The call that produced this object.}
-\item{family}{Family used for the model.}
 \item{nobs}{Number of observations.}
+}
 }
 \description{
 Fit a complex-valued lasso formulation via complex update coordinate descent algorithm.
@@ -100,14 +98,14 @@ The sequence of models implied by \code{lambda} is fit by coordinate descent.
 }
 \examples{
 set.seed(1010)
-n = 1000
-p = 200
-x = array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
-for (j in 1:p) x[,j] = x[,j] / sqrt(mean(Mod(x[,j])^2))
-e = rnorm(n) + (1+1i) * rnorm(n)
-b = c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
-y = x \%*\% b + e
-fit.test = classo(x, y)
+n <- 1000
+p <- 200
+x <- array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
+for (j in 1:p) x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
+e <- rnorm(n) + (1+1i) * rnorm(n)
+b <- c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
+y <- x \%*\% b + e
+fit.test <- classo(x, y)
 
 }
 \references{

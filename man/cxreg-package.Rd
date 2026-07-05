@@ -2,35 +2,51 @@
 % Please edit documentation in R/cxreg-package.R
 \name{cxreg-package}
 \alias{cxreg-package}
-\title{Complex-valued Lasso and graphical Lasso paths}
+\title{Complex-valued Lasso, graphical Lasso, and spectral inference}
 \description{
-This package fits complex-valued Lasso for regression using coordinate descent. The algorithm is extremely fast, and exploits sparsity in the input x matrix where it exists.
-A variety of predictions can be made from the fitted models.
+This package fits a complex-valued Lasso for regression using coordinate
+descent. The algorithm is extremely fast and exploits sparsity in the input
+\code{x} matrix where it exists. A variety of predictions can be made from
+the fitted models.
 }
 \details{
-This package also provides fitting for complex-valued graphical Lasso using coordinate descent.
-The function is built upon classo with covariate updates, just as the regular real-valued coordinate descent algorithm for graphical Lasso.
+This package also provides fitting for a complex-valued graphical Lasso
+(CGLASSO) using coordinate descent. The function is built upon
+\code{classo} with covariate updates, just as the regular real-valued
+coordinate descent algorithm for graphical Lasso.
+
+Beyond estimation, the package implements a full inference pipeline for
+high-dimensional sparse spectral precision matrices:
+\itemize{
+\item \code{\link{select_m}}: data-driven bandwidth selection via
+generalised cross-validation (GCV) on the diagonal periodogram.
+\item \code{\link{decglasso}}: one-step debiasing (desparsification)
+of the CGLASSO estimator.
+\item \code{\link{var.cov}}: asymptotic variance and pseudovariance
+estimation (plug-in or HAC) with real/imaginary decomposition.
+\item \code{\link{spec.test}}: entry-wise Z-statistics, Mahalanobis
+chi-squared statistics, and confidence ellipse areas.
+\item \code{\link{spec.fdr}}: FDR-controlled multiple testing for
+spectral precision matrix support recovery.
+}
 
 \tabular{ll}{
 Package: \tab cxreg \cr
 Type: \tab Package \cr
-Version: \tab 1.0.0 \cr
-Date: \tab 2025-07-01 \cr
+Version: \tab 1.1.0 \cr
+Date: \tab 2026-06-01 \cr
 License: \tab MIT + file LICENSE \cr
 }
-
-Very simple to use. Accepts \code{x,y} data for penalized regression models, and
-produces the regularization paths over a grid of values for the tuning
-parameters \code{lambda}. Similarly, accepts \code{S,n} data for penalized Gaussian likelihood,
-and produce the regularization paths over a grid of values for the tuning parameter \code{lambda}.
 }
 \examples{
-\donttest{ 
+\donttest{
+## --- classo: complex-valued lasso regression ---
 set.seed(1234)
-x <- array(rnorm(100*20), c(100,20)) + (1+1i) * array(rnorm(100*20), c(100,20))
-for (j in 1:20) x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
-e <- rnorm(100) + (1+1i) * rnorm(100)
-b <- c(1, -1, rep(0, 18)) + (1+1i) * c(-0.5, 2, rep(0, 18))
+n <- 100; p <- 20
+x <- array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
+for (j in 1:p) x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
+e <- rnorm(n) + (1+1i) * rnorm(n)
+b <- c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
 y <- x \%*\% b + e
 fit <- classo(x, y)
 predict(fit, newx = x[1:5, ], s = c(0.01, 0.005))
@@ -38,30 +54,66 @@ predict(fit, type = "coef")
 plot(fit, xvar = "lambda")
 }
 
-\donttest{ 
-p <- 30
-n <- 500
+\donttest{
+## --- cglasso: complex-valued graphical lasso ---
+library(mvtnorm)
+p <- 30; n <- 500
 C <- diag(0.7, p)
-C[row(C) == col(C) + 1] <- 0.3  
-C[row(C) == col(C) - 1] <- 0.3  
+C[row(C) == col(C) + 1] <- 0.3
+C[row(C) == col(C) - 1] <- 0.3
 Sigma <- solve(C)
 set.seed(1010)
+X_t <- rmvnorm(n = n, mean = rep(0, p), sigma = Sigma)
 m <- floor(sqrt(n)); j <- 1
-X_t <- mvtnorm::rmvnorm(n = n, mean = rep(0, p), sigma = Sigma)
-d_j <- dft.X(X_t,j,m)
-f_j_hat <- t(d_j) \%*\% Conj(d_j) / (2*m+1)
-fit <- cglasso(S=f_j_hat, nobs=n,type="I")
-plot(fit$Theta_list,index=fit$min_index,type="mod",label=FALSE)
+d_j <- dft.j(X_t, j, m)
+f_j_hat <- t(d_j) \%*\% Conj(d_j) / (2*m + 1)
+fit <- cglasso(S = f_j_hat, m = m, type = "I")
+}
+
+\donttest{
+## --- Inference pipeline: debiasing, variance, testing ---
+library(mvtnorm)
+p <- 10; n <- 200
+set.seed(42)
+X <- rmvnorm(n, mean = rep(0, p), sigma = diag(p))
+
+## Bandwidth selection
+bw_sel <- select_m(X)
+m <- bw_sel$m_opt
+
+## Spectral density estimate and cglasso fit
+j <- floor(n / 4)
+dft  <- dft.all(X)
+fhat <- fhat_at(dft, j, m)
+fit  <- cglasso(S = fhat, m = m)
+
+## Debiasing
+res  <- decglasso(object = fit, fhat = fhat)
+
+## Variance estimation
+vc <- var.cov(Theta = res$Theta_tilde, X = X, j = j, m = m, type = "plug-in")
+
+## Confidence regions and test statistics (H0: Theta = 0)
+st <- spec.test(Est = res$Theta_tilde, varcov = vc, m = m, alpha = 0.05)
+
+## FDR-controlled support recovery
+fdr_res <- spec.fdr(Chi_sq = st$Chi_sq, alpha = 0.05, diag = FALSE)
+fdr_res$tau
+fdr_res$Decision
 }
 }
 \references{
 Deb, N., Kuceyeski, A., Basu, S. (2024)
 \emph{Regularized Estimation of Sparse Spectral Precision Matrices},
 \url{https://arxiv.org/abs/2401.11128}.
+
+Deb, N., Kim, Y., Basu, S. (2026)
+\emph{Inference for High-Dimensional Sparse Spectral Precision Matrices},
+\url{https://arxiv.org/abs/2606.07986}.
 }
 \author{
 Younghoon Kim, Navonil Deb, Sumanta Basu \cr Maintainer:
-Younghoon Kim \href{mailto:yk748@cornell.edu}{yk748@cornell.edu}
+Younghoon Kim \href{mailto:ykim124@ua.edu}{ykim124@ua.edu}
 }
 \keyword{models}
 \keyword{package}

@@ -28,7 +28,7 @@ each row is an observation vector.}
 \item{weights}{Observation weights. Default is 1 for each observation.}
 
 \item{standardize}{Logical flag for x variable standardize beforehand; i.e. for n and p by nobs and nvar,
-\deqn{\|X_j\|=\sqrt{n} \textrm{for all }j=1,\ldots,p}
+\deqn{\|X_j\|=\sqrt{n} \mbox{ for all } j=1,\ldots,p}
 is satisfied for the input x. Default is \code{FALSE}.}
 
 \item{lambda}{A user supplied \code{lambda} sequence. Default is \code{NULL}.}
@@ -37,7 +37,7 @@ is satisfied for the input x. Default is \code{FALSE}.}
 
 \item{lambda.min.ratio}{If \code{nobs} < \code{nvars}, the default is 0.01.}
 
-\item{intercept}{Should intercept be set to zero (default=FALSE) or fitted (FALSE)? This default is reversed from \code{glmnet} package.}
+\item{intercept}{Should intercept be set to zero (default=FALSE) or fitted (TRUE)? This default is reversed from \code{glmnet} package.}
 
 \item{thresh}{Convergence threshold for coordinate descent. Each inner
 coordinate-descent loop continues until the maximum change in the objective after any
@@ -46,14 +46,15 @@ coefficient update is less than thresh times the null deviance. Default value is
 \item{maxit}{Maximum number of iterations of outer loop. Default 10,000.}
 
 \item{trace.it}{Controls how much information is printed to screen. Default is
-\code{trace.it=0} (no information printed). If \code{trace.it=1}, a progress
+\code{trace.it = 0} (no information printed). If \code{trace.it = 1}, a progress
 bar is displayed. If \code{trace.it=2}, some information about the fitting
 procedure is printed to the console as the model is being fitted.}
 
 \item{\dots}{Other arguments that can be passed to \code{classo}}
 }
 \value{
-An object with class "classofit" and "classo".
+An object with class \code{"classofit"} and \code{"classo"}.
+\describe{
 \item{a0}{Intercept sequence of length \code{length(lambda)}.}
 \item{beta}{A \code{nvars x length(lambda)} matrix of coefficients, stored in
 sparse matrix format.}
@@ -70,12 +71,9 @@ for the saturated model (a model with a free parameter per observation).
 Hence dev.ratio=1-dev/nulldev.}
 \item{nulldev}{Null deviance (per observation). This is defined to be
 2*(loglike_sat -loglike(Null)). The null model refers to the intercept model.}
-\item{npasses}{Total passes over the data summed over all lambda values.}
-\item{jerr}{Error flag, for warnings and errors (largely for internal
-debugging).}
 \item{call}{The call that produced this object.}
-\item{family}{Family used for the model.}
 \item{nobs}{Number of observations.}
+}
 }
 \description{
 Fit a complex-valued lasso formulation for a path of lambda values.

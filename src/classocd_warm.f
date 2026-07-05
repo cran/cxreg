@@ -1,4 +1,3 @@
-
 c     Complex Lasso with warm start
       
       subroutine classocd_warm(x,y,n,p,lambda,b0,b)
@@ -77,6 +76,3 @@ c     Complex Lasso with warm start
       
       return
       end
-
-
-

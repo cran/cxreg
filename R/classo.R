@@ -29,7 +29,7 @@
 #' \code{classo} relies on its warms starts for speed, and its often faster to fit a whole path than compute a single fit.
 #' @param standardize Logical flag for x variable standardization, prior to
 #' fitting the model sequence. The coefficients are always returned on the
-#' original scale. Default is \code{standardize=TRUE}.
+#' original scale. Default is \code{standardize = TRUE}.
 #' @param intercept Should intercept(s) set to zero (default=FALSE) or be fitted (TRUE).
 #' @param maxit Maximum number of iterations of outer loop. Default 10,000.
 #' @param thresh Convergence threshold for coordinate descent.
@@ -40,7 +40,8 @@
 #' useful for big models that take a long time to fit.
 #' @param \dots Other arguments that can be passed to \code{classo}
 #'
-#' @return An object with class "classofit" and "classo".
+#' @return An object with class \code{"classofit"} and \code{"classo"}.
+#' \describe{
 #' \item{a0}{Intercept sequence of length \code{length(lambda)}.}
 #' \item{beta}{A \code{nvars x length(lambda)} matrix of coefficients, stored in
 #' sparse matrix format.}
@@ -50,19 +51,16 @@
 #' largest lambda reported does not quite give the zero coefficients reported
 #' (lambda=inf would in principle). Instead, the largest lambda for alpha=0.001
 #' is used, and the sequence of lambda values is derived from this.}
-#' \item{dev}{The fraction of (null) deviance explained. The deviance
+#' \item{dev.ratio}{The fraction of (null) deviance explained. The deviance
 #' calculations incorporate weights if present in the model. The deviance is
 #' defined to be 2*(loglike_sat - loglike), where loglike_sat is the log-likelihood
 #' for the saturated model (a model with a free parameter per observation).
-#' Hence dev=1-dev/nulldev.}
+#' Hence dev.ratio=1-dev/nulldev.}
 #' \item{nulldev}{Null deviance (per observation). This is defined to be
 #' 2*(loglike_sat -loglike(Null)). The null model refers to the intercept model.}
-#' \item{npasses}{Total passes over the data summed over all lambda values.}
-#' \item{jerr}{Error flag, for warnings and errors (largely for internal
-#' debugging).}
 #' \item{call}{The call that produced this object.}
-#' \item{family}{Family used for the model.}
 #' \item{nobs}{Number of observations.}
+#' }
 #'
 #' @author Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
 #' \email{yk748@cornell.edu}
@@ -72,14 +70,14 @@
 #' @keywords models complex-valued regression
 #' @examples
 #' set.seed(1010)
-#' n = 1000
-#' p = 200
-#' x = array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
-#' for (j in 1:p) x[,j] = x[,j] / sqrt(mean(Mod(x[,j])^2))
-#' e = rnorm(n) + (1+1i) * rnorm(n)
-#' b = c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
-#' y = x %*% b + e
-#' fit.test = classo(x, y)
+#' n <- 1000
+#' p <- 200
+#' x <- array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
+#' for (j in 1:p) x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
+#' e <- rnorm(n) + (1+1i) * rnorm(n)
+#' b <- c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
+#' y <- x %*% b + e
+#' fit.test <- classo(x, y)
 #'
 #' @export classo
 classo <- function(x,y,
@@ -92,45 +90,70 @@ classo <- function(x,y,
                    maxit=10000,
                    thresh=1e-7,
                    trace.it=0,...){
-
+  
   this.call <- match.call()
   # ------------------------------------------------ #
   # Need to do this first so defaults in call can be satisfied
   np <- dim(x)
-
+  
   # check dims
   if(is.null(np)|(np[2]<=1)){
     stop("x should be a matrix with 2 or more columns")
   }
   nobs <- np[1]
   nvars <- np[2]
-
+  
+  # check that x is complex-valued
+  if (!is.complex(x)) {
+    stop("x must be a complex-valued matrix; real-valued inputs are not supported")
+  }
+  
   # check for NAs in x
-  if(any(is.na(x))){
+  if (any(is.na(x))) {
     stop("x has missing values; consider using makeX() to impute them")
   }
-
-  # check for NAs in weights
-  if(is.null(weights)){
-    weights <- rep(1,nobs)
-  }else if(length(weights)!=nobs){
-    stop(paste("number of elements in weights (",length(weights),")
-               not equal to the number of rows of x (",nobs,")",sep=""))
+  
+  # check that y is complex-valued
+  if (!is.complex(y)) {
+    stop("y must be a complex-valued vector; real-valued inputs are not supported")
   }
-
+  
+  # coerce y to a vector if it is a single-column matrix
+  if (is.matrix(y) && ncol(y) == 1) {
+    y <- drop(y)
+  }
+  
+  # check that y is a one-dimensional vector
+  if (!is.vector(y) || !is.null(dim(y))) {
+    stop("y must be a one-dimensional vector")
+  }
+  
+  # check that length of y matches number of rows of x
+  if (length(y) != nobs) {
+    stop(paste("number of elements in y (", length(y), ") ",
+               "not equal to the number of rows of x (", nobs, ")", sep = ""))
+  }
+  
+  # check for NAs in weights
+  if (is.null(weights)) {
+    weights <- rep(1, nobs)
+  } else if (length(weights) != nobs) {
+    stop(paste("number of elements in weights (", length(weights), ")
+               not equal to the number of rows of x (", nobs, ")", sep = ""))
+  }
+  
   # ------------------------------------------------ #
-  fit_classo <- classo.path(x,y,
-                     weights=NULL,
-                     standardize=TRUE,
-                     lambda,
-                     nlambda,
-                     lambda.min.ratio,
-                     intercept = FALSE,
-                     thresh = 1e-7,
-                     maxit = 10000,
-                     trace.it = trace.it)
-
+  fit_classo <- classo.path(x, y,
+                            weights        = weights,
+                            standardize    = standardize,
+                            lambda         = lambda,
+                            nlambda        = nlambda,
+                            lambda.min.ratio = lambda.min.ratio,
+                            intercept      = intercept,
+                            thresh         = thresh,
+                            maxit          = maxit,
+                            trace.it       = trace.it)
+  
   fit_classo$call <- this.call
   fit_classo
 }
-

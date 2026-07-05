@@ -1,4 +1,16 @@
-#' internal classo parameters
+# ----------------------------------------------------------------- #
+# Environment-backed settings store so that classo.control(itrace=1)
+# actually persists across calls within the same R session.
+# ----------------------------------------------------------------- #
+#' @noRd
+.classo.env <- new.env(parent = emptyenv())
+.classo.env$settings <- list(
+  fdev   = 1e-05, devmax = 0.999,  eps    = 1e-06, big    = 9.9e+35,
+  mnlam  = 5,     pmin   = 1e-09,  exmx   = 250,   prec   = 1e-10,
+  mxit   = 100,   itrace = 0,      epsnr  = 1e-06, mxitnr = 25
+)
+
+#' Internal classo parameters
 #'
 #' View and/or change the factory default parameters in classo
 #'
@@ -28,85 +40,54 @@
 #' and \code{cv.classo}. factory default = 0
 #' @param epsnr convergence threshold for \code{classo.fit}. factory default =
 #' 1.0e-6
-#' @param mxitnr maximum iterations for the IRLS loop in \code{classo.fit}. factory
-#' default = 25
+#' @param mxitnr maximum iterations for the IRLS loop in \code{classo.fit}.
+#' factory default = 25
 #' @param factory If \code{TRUE}, reset all the parameters to the factory
 #' default; default is \code{FALSE}
 #' @return A list with named elements as in the argument list
 #' @seealso \code{classo}
 #' @keywords models regression
 #' @examples
-#'
-#' classo.control(fdev = 0)  #continue along path even though not much changes
-#' classo.control()  # view current settings
-#' classo.control(factory = TRUE)  # reset all the parameters to their default
-#'
+#' classo.control(fdev = 0)  # continue along path even though not much changes
+#' classo.control()           # view current settings
+#' classo.control(factory = TRUE)  # reset all parameters to their default
 #' @export classo.control
-classo.control <- function (fdev = 1e-05, devmax = 0.999, eps = 1e-06, big = 9.9e+35,
-                            mnlam = 5, pmin = 1e-09, exmx = 250, prec = 1e-10, mxit = 100,
-                            itrace = 0, epsnr = 1e-06, mxitnr = 25,
-                            factory = TRUE
-                            ){
-
-  # ------------------------------------------------ #
-  list(fdev = 1e-05, devmax = 0.999, eps = 1e-06, big = 9.9e+35,
-         mnlam = 5, pmin = 1e-09, exmx = 250, prec = 1e-10, mxit = 100,
-         itrace = 0, epsnr = 1e-06, mxitnr = 25)
-
-  # Change factory=TRUE for now!
-  # Options chosen when FALSE are called by RccpExports.R!
-
-  # inquiry =! nargs()
-  # if (factory){
-  #   invisible(classo.control(fdev = 1e-05, devmax = 0.999,
-  #                            eps = 1e-06, big = 9.9e+35, mnlam = 5, pmin = 1e-09,
-  #                            exmx = 250, prec = 1e-10, mxit = 100, itrace = 0,
-  #                            epsnr = 1e-06, mxitnr = 25))
-  # }else {
-  #   if (!missing(fdev)){
-  #     chg_fract_dev(as.double(fdev))
-  #   }
-  #   if (!missing(devmax)){
-  #     chg_dev_max(as.double(devmax))
-  #   }
-  #   if (!missing(eps)){
-  #     chg_min_flmin(as.double(eps))
-  #   }
-  #   if (!missing(big)){
-  #     chg_big(as.double(big))
-  #   }
-  #   if (!missing(mnlam)){
-  #     chg_min_lambdas(as.integer(mnlam))
-  #   }
-  #   if (!missing(pmin)){
-  #     chg_min_null_prob(as.double(pmin))
-  #   }
-  #   if (!missing(exmx)){
-  #     chg_max_exp(as.double(exmx))
-  #   }
-  #   if (!missing(prec) | !missing(mxit)){
-  #     chg_bnorm(as.double(prec), as.integer(mxit))
-  #   }
-  #   if (!missing(itrace)){
-  #     chg_itrace(as.integer(itrace))
-  #   }
-  #   if (!missing(epsnr)){
-  #     chg_epsnr(as.double(epsnr))
-  #   }
-  #   if (!missing(mxitnr)){
-  #     chg_mxitnr(as.integer(mxitnr))
-  #   }
-  #
-  #   value=c(get_int_parms(fdev = double(1),
-  #                         eps = double(1), big = double(1), mnlam = integer(1),
-  #                         devmax = double(1), pmin = double(1), exmx = double(1),
-  #                         itrace = integer(1)),
-  #           get_bnorm(prec = double(1), mxit = integer(1)),
-  #           get_int_parms2(epsnr = double(1), mxitnr = integer(1)))
-  #   if(inquiry){
-  #     value
-  #   } else {
-  #     invisible(value)
-  #   }
-  # }
+classo.control <- function(fdev   = NULL, devmax = NULL, eps    = NULL,
+                           big    = NULL, mnlam  = NULL, pmin   = NULL,
+                           exmx   = NULL, prec   = NULL, mxit   = NULL,
+                           itrace = NULL, epsnr  = NULL, mxitnr = NULL,
+                           factory = FALSE) {
+  
+  # Reset to factory defaults
+  if (factory) {
+    .classo.env$settings <- list(
+      fdev   = 1e-05, devmax = 0.999,  eps    = 1e-06, big    = 9.9e+35,
+      mnlam  = 5,     pmin   = 1e-09,  exmx   = 250,   prec   = 1e-10,
+      mxit   = 100,   itrace = 0,      epsnr  = 1e-06, mxitnr = 25
+    )
+    return(invisible(.classo.env$settings))
+  }
+  
+  # Update any supplied parameters
+  s <- .classo.env$settings
+  if (!is.null(fdev))    s$fdev   <- fdev
+  if (!is.null(devmax))  s$devmax <- devmax
+  if (!is.null(eps))     s$eps    <- eps
+  if (!is.null(big))     s$big    <- big
+  if (!is.null(mnlam))   s$mnlam  <- mnlam
+  if (!is.null(pmin))    s$pmin   <- pmin
+  if (!is.null(exmx))    s$exmx   <- exmx
+  if (!is.null(prec))    s$prec   <- prec
+  if (!is.null(mxit))    s$mxit   <- mxit
+  if (!is.null(itrace))  s$itrace <- itrace
+  if (!is.null(epsnr))   s$epsnr  <- epsnr
+  if (!is.null(mxitnr))  s$mxitnr <- mxitnr
+  .classo.env$settings <- s
+  
+  # Return visibly when querying (no args), invisibly when setting
+  if (nargs() == 0L) {
+    .classo.env$settings
+  } else {
+    invisible(.classo.env$settings)
+  }
 }

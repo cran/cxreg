@@ -2,28 +2,35 @@
 % Please edit documentation in R/buildPremat.default.R
 \name{buildPredmat}
 \alias{buildPredmat}
+\alias{buildPredmat.default}
 \title{Build Prediction Matrix}
 \usage{
 buildPredmat(outlist, lambda, x, foldid, alignment, ...)
+
+\method{buildPredmat}{default}(outlist, lambda, x, foldid, alignment, ...)
 }
 \arguments{
-\item{outlist}{A list of fitted models.}
+\item{outlist}{A list of fitted \code{classo} models, one per fold.}
 
-\item{lambda}{A vector of penalty values.}
+\item{lambda}{A vector of penalty values from the master fit.}
 
-\item{x}{A predictor matrix.}
+\item{x}{The full predictor matrix (complex-valued).}
 
-\item{foldid}{Fold identifiers.}
+\item{foldid}{Integer vector of fold assignments, length \code{nrow(x)}.}
 
-\item{alignment}{Alignment method (not used).}
+\item{alignment}{Alignment method: \code{"lambda"} (default) aligns fold
+predictions to the master lambda sequence; \code{"fraction"} aligns by
+fraction of path progress.}
 
-\item{\dots}{Other arguments}
+\item{\dots}{Other arguments passed to \code{predict}.}
 }
 \value{
-The return value depends on the method; for the default method,
-see \code{\link{buildPredmat.default}}.
+A complex matrix of predicted values, \code{nrow(x)} by
+\code{length(lambda)}. Rows correspond to observations held out in each
+fold; all other entries are \code{NA}.
 }
 \description{
-These are not intended for use by users. Constructs a prediction matrix for cross-validation folds, using the coefficient paths in \code{outlist}.
-Inspired by internal functions in the \code{glmnet} package.
+These are not intended for use by users. Constructs a prediction matrix for
+cross-validation folds using the coefficient paths in \code{outlist}.
+Inspired by internal functions in the \pkg{glmnet} package.
 }

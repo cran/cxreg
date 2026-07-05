@@ -3,18 +3,44 @@
 \docType{data}
 \name{cglasso_example}
 \alias{cglasso_example}
-\title{Example Data for CGLASSO}
+\title{Example data for cglasso}
 \format{
-A list with components:
+A list with the following components:
 \describe{
-\item{S}{Spectral density matrix}
-\item{n}{Sample size}
+\item{\code{f_hat}}{A \eqn{p \times p} complex-valued Hermitian matrix.
+The smoothed periodogram (spectral density) estimate at Fourier
+frequency index \code{j}, computed via \code{\link{fhat_at}} with
+half-bandwidth \code{m = floor(sqrt(n))}.}
+\item{\code{n}}{A positive integer. The number of time series
+observations used to generate the data. The half-bandwidth is
+\code{m = floor(sqrt(n))}.}
+\item{\code{p}}{A positive integer. The number of variables (dimension
+of the time series).}
+\item{\code{j}}{A positive integer. The Fourier frequency index at which
+\code{f_hat} was evaluated.}
 }
 }
 \usage{
 data(cglasso_example)
 }
 \description{
-A synthetic dataset used to illustrate complex-valued graphical Lasso.
+A synthetic dataset used to illustrate the complex-valued graphical Lasso
+(\code{\link{cglasso}}). The data consist of a smoothed periodogram matrix
+at a single Fourier frequency, computed from a simulated multivariate
+time series with a known sparse spectral precision matrix structure.
+}
+\details{
+The dataset is generated from a \eqn{p = 30}-dimensional VMA(3) process
+with \eqn{n = 500} observations. The half-bandwidth \code{m} is chosen
+as \code{floor(sqrt(n))} and the smoothed periodogram \code{f_hat} is
+evaluated at frequency index \code{j = 1}.
+}
+\references{
+Deb, N., Kim, Y., Basu, S. (2026)
+\emph{Inference for High-Dimensional Sparse Spectral Precision Matrices},
+\url{https://arxiv.org/abs/2606.07986}.
+}
+\seealso{
+\code{\link{cglasso}}, \code{\link{fhat_at}}, \code{\link{dft.all}}
 }
 \keyword{datasets}

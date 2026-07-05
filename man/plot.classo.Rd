@@ -33,5 +33,5 @@ A coefficient profile plot is produced.
 }
 \author{
 Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
-\email{yk748@cornell.edu}
+\email{ykim124@ua.edu}
 }

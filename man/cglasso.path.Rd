@@ -8,28 +8,32 @@ cglasso.path(
   S,
   D,
   type,
-  nobs,
+  m,
   lambda,
   nlambda,
   lambda.min.ratio,
   W.init,
   stopping_rule,
   stop_criterion,
-  maxit = maxit,
-  thresh = thresh,
-  trace.it = trace.it,
+  maxit,
+  thresh,
+  trace.it,
   ...
 )
 }
 \arguments{
 \item{S}{p x p-dimensional symmetric spectral density (or spectral coherence) matrix. S is considered as being computed by average smoothed periodogram (the bandwidth is computed by using the given nobs).}
 
-\item{D}{The p x p-dimensional diagonal matrix with spectral densities as the diagonal entries. Default is \code{NULL}. If D is not provided, diagonals of S are chosen.}
+\item{D}{The p x p-dimensional diagonal matrix to produce the partial spectral coherence matrix from S. Default is \code{NULL}. If D is not specified, the function automatically takes the inverse square root of the diagonals of S.}
 
 \item{type}{Logical flag to choose the formulation to solve. Default is \code{I}. If type is \code{I}, the algorithm solves CGLASSO-I in the reference,
-\deqn{D^{-1/2}(\arg\min_{\Theta}Tr[\hat{R}\hat{\Theta}]-\log\det\Theta + \sum_{i\neq j}|\Theta_{ij}|)D^{-1/2}} for the given $D$. If type is \code{II}, the algorithm solves CGLASSO-II in the reference. It is for each iterative classo with covariate update, the scale matrix D is multiplied. Please see the reference for the details of the iterative updates.}
+\deqn{D^{-1/2}\Bigl(\arg\min_{\Theta}\mathrm{Tr}[\hat{R}\hat{\Theta}]
+  -\log\det\Theta + \sum_{i\neq j}|\Theta_{ij}|\Bigr)D^{-1/2}}
+for the given \eqn{D}. If type is \code{II}, the algorithm solves CGLASSO-II
+in the reference: for each iterative classo with covariate update, the scale
+matrix \eqn{D} is multiplied. Please see the reference for details.}
 
-\item{nobs}{Number of observations used in computation of the spectral density matrix S. This quantity is need to compute the Fourier frequency, extended BIC, and bandwidth for the average smoothed periodogram.}
+\item{m}{Window size. This quantity is need to compute the Fourier frequency, extended BIC, and bandwidth for the average smoothed periodogram.}
 
 \item{lambda}{A user supplied \code{lambda} sequence.
 Typical usage is to have the program compute its own \code{lambda} sequence based on
@@ -41,10 +45,7 @@ WARNING: use with care. Avoid supplying a single value for \code{lambda}}
 
 \item{lambda.min.ratio}{Smallest value for \code{lambda}, as a fraction of
 \code{lambda.max}, the (data derived) entry value (i.e. the smallest value
-for which all coefficients are zero). The default depends on the sample size
-\code{nobs} relative to the number of variables \code{nvar}.
-If \code{nobs > p}, the default is \code{0.0001}, close to zero.
-If \code{nobs < p}, the default is \code{0.01}.}
+for which all coefficients are zero). ???}
 
 \item{W.init}{Logical flag whether the initially estimated spectral density matrix is given. Default is \code{NULL}.}
 
@@ -62,39 +63,16 @@ useful for big models that take a long time to fit.}
 \item{\dots}{Other arguments that can be passed to \code{cglasso}}
 }
 \value{
-An object with class "cglassofit" and "cglasso".
-\item{a0}{Intercept sequence of length \code{length(lambda)}.}
-\item{beta}{A \code{nvar x length(lambda)} matrix of coefficients, stored in
-sparse matrix format.}
-\item{df}{The number of nonzero coefficients for each value of lambda.}
-\item{dim}{Dimension of coefficient matrix.}
-\item{lambda}{The actual sequence of lambda values used. When alpha=0, the
-largest lambda reported does not quite give the zero coefficients reported
-(lambda=inf would in principle). Instead, the largest lambda for alpha=0.001
-is used, and the sequence of lambda values is derived from this.}
-\item{dev}{The fraction of (null) deviance explained. The deviance
-calculations incorporate weights if present in the model. The deviance is
-defined to be 2*(loglike_sat - loglike), where loglike_sat is the log-likelihood
-for the saturated model (a model with a free parameter per observation).
-Hence dev=1-dev/nulldev.}
-\item{nulldev}{Null deviance (per observation). This is defined to be
-2*(loglike_sat -loglike(Null)). The null model refers to the intercept model.}
-\item{npasses}{Total passes over the data summed over all lambda values.}
-\item{jerr}{Error flag, for warnings and errors (largely for internal
-debugging).}
-\item{call}{The call that produced this object.}
-\item{family}{Family used for the model.}
-\item{nobs}{Number of observations.}
-
-#' @return An object with class "cglassofit" and "cglasso".
-\item{stop_arr}{Sequence of values of information criterion for a fixed lambda.}
+An object with class \code{"cglassofit"} and \code{"cglasso"}.
+\describe{
+\item{stop_arr}{Sequence of values of the information criterion for each lambda.}
 \item{stop_criterion}{Stopping criterion used.}
-\item{min_index}{The index for lambda that minimizes the value of the information criterion.}
+\item{min_index}{The index for the lambda that minimizes the information criterion.}
 \item{lambda_grid}{Sequence of lambdas used.}
-\item{Theta_hat}{Estimated inverse spectral matrix for each fixed lambda. It is provided in the list.}
-\item{type}{Type of the formulation used, either CGALSSO-I or CGLASSO-II.}
-\item{scale}{Whether the spectral density matrix (covariance) or spectral coherence (coherence) is given.}
-\item{D}{Used scale diagonal matrix.}
+\item{Theta_list}{Estimated spectral precision matrix for each fixed lambda, provided as a list.}
+\item{type}{Type of the formulation used, either CGLASSO-I or CGLASSO-II.}
+\item{D}{Scale diagonal matrix used.}
+}
 }
 \description{
 Fit a complex-valued graphical Lasso formulation for a path of lambda values.

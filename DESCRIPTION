@@ -1,27 +1,37 @@
 Package: cxreg
 Title: Complex-Valued Lasso and Complex-Valued Graphical Lasso
-Version: 1.0.0
+Version: 1.1.2
 Authors@R: c(
-    person("Younghoon", "Kim", , "yk748@cornell.edu", role = c("aut", "cre")),
+    person("Younghoon", "Kim", , "ykim124@ua.edu", role = c("aut", "cre")),
     person("Navonil", "Deb", role = "aut"),
-    person("Sumanta", "Basu", role = "ctb")
+    person("Sumanta", "Basu", role = "aut")
   )
-Description: Implements 'glmnet'-style complex-valued lasso and
-    complex-valued graphical lasso using a 'pathwise' coordinate descent
-    algorithm for complex-valued parameters. The package provides
-    supporting tools for estimation, simulation, and prediction. See Deb
-    (2024) <doi:10.48550/ArXiv.2401.11128> for the algorithm description.
+Description: Implements 'glmnet'-style complex-valued lasso (CLASSO) and
+    complex-valued graphical lasso (CGLASSO) via a pathwise coordinate
+    descent algorithm for complex-valued parameters, using an isomorphism
+    between complex numbers and 2x2 orthogonal matrices. Also provides a
+    full inference pipeline for high-dimensional sparse spectral precision
+    matrices, including data-driven bandwidth selection, one-step
+    debiasing, asymptotic variance estimation, entry-wise confidence
+    regions, and FDR-controlled hypothesis testing. Supporting tools for
+    cross-validation, simulation, coefficient extraction, and plotting are
+    included. See Deb, Kuceyeski, and Basu (2024)
+    <doi:10.48550/arXiv.2401.11128> and Deb, Kim, and Basu (2026)
+    <doi:10.48550/arXiv.2606.07986>.
 License: MIT + file LICENSE
 Depends: R (>= 3.5.0)
 Imports: fields, foreach, gdata, grDevices, Matrix, methods, mvtnorm,
-        Rcpp, stats
+        stats, utils
+Suggests: devtools, doParallel, knitr, rmarkdown, testthat (>= 3.0.0),
+        tinytex, tools, xfun
+VignetteBuilder: knitr
 Encoding: UTF-8
 RoxygenNote: 7.3.2
 NeedsCompilation: yes
-Packaged: 2025-09-12 18:00:19 UTC; yhkim
+Packaged: 2026-06-26 16:46:09 UTC; yhkim
 Author: Younghoon Kim [aut, cre],
   Navonil Deb [aut],
-  Sumanta Basu [ctb]
-Maintainer: Younghoon Kim <yk748@cornell.edu>
+  Sumanta Basu [aut]
+Maintainer: Younghoon Kim <ykim124@ua.edu>
 Repository: CRAN
-Date/Publication: 2025-09-17 10:50:02 UTC
+Date/Publication: 2026-07-05 20:30:17 UTC

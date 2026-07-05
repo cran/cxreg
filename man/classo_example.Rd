@@ -3,18 +3,43 @@
 \docType{data}
 \name{classo_example}
 \alias{classo_example}
-\title{Example Data for CLASSO}
+\title{Example data for classo}
 \format{
-A list with components:
+A list with the following components:
 \describe{
-\item{X}{Design matrix}
-\item{Y}{Response vector}
+\item{\code{x}}{A complex-valued matrix of dimension
+\eqn{n \times p} (\eqn{1000 \times 200}). Each column has been
+normalised so that \eqn{\|x_j\| / \sqrt{n} = 1}.}
+\item{\code{y}}{A complex-valued vector of length \eqn{n}. The response
+\eqn{y = X\beta + \varepsilon} where \eqn{\varepsilon} is complex
+Gaussian noise.}
+\item{\code{beta}}{A complex-valued vector of length \eqn{p}. The true
+sparse coefficient vector, with nonzero entries at positions 1 and 2.}
+\item{\code{n}}{A positive integer. The number of observations.}
+\item{\code{p}}{A positive integer. The number of variables.}
 }
 }
 \usage{
 data(classo_example)
 }
 \description{
-A toy example demonstrating complex-valued lasso.
+A synthetic dataset used to illustrate the complex-valued Lasso
+(\code{\link{classo}}). The data consist of a complex-valued design matrix
+and response vector generated from a sparse linear model.
+}
+\details{
+The dataset is generated with \eqn{n = 1000} observations and
+\eqn{p = 200} variables. The true coefficient vector \eqn{\beta} has
+two nonzero entries. Each column of \code{x} is normalised to have unit
+complex magnitude. The response \code{y} is \eqn{X\beta + \varepsilon}
+with complex Gaussian noise \eqn{\varepsilon}.
+}
+\references{
+Deb, N., Kuceyeski, A., Basu, S. (2024)
+\emph{Regularized Estimation of Sparse Spectral Precision Matrices},
+\url{https://arxiv.org/abs/2401.11128}.
+}
+\seealso{
+\code{\link{classo}}, \code{\link{cv.classo}}
 }
 \keyword{datasets}

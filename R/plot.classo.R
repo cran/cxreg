@@ -17,13 +17,15 @@
 #' @return No return value, called for side effects (produces a plot).
 #' 
 #' @author Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
-#' \email{yk748@cornell.edu}
+#' \email{ykim124@ua.edu}
 #' @seealso \code{classo}
 #'
 #' @method plot classo
 #' @export
-plot.classo <- function(x, xvar=c("norm","lambda","dev"),label=FALSE,...){
-
+plot.classo <- function(x, xvar = c("norm", "lambda", "dev"), label = FALSE, ...) {
+  
   xvar <- match.arg(xvar)
-  plotCoef(x$beta,lambda=x$lambda,df=x$df,dev=x$dev.ratio,label=label,xvar=xvar,...)
+  # Pass complex beta directly; plotCoef splits into Re and Im panels internally
+  plotCoef(x$beta, lambda = x$lambda, df = x$df, dev = x$dev.ratio,
+           label = label, xvar = xvar, ...)
 }

@@ -2,39 +2,44 @@
 % Please edit documentation in R/plot.cglasso.R
 \name{plot.cglasso}
 \alias{plot.cglasso}
-\title{plot heatmap from a "cglasso" object}
+\title{Plot heatmap from a "cglasso" object}
 \usage{
 \method{plot}{cglasso}(
   x,
-  index,
-  type = c("real", "imaginary", "mod", "both"),
+  index = 1,
+  type = c("mod", "real", "imaginary", "both"),
   label = FALSE,
   ...
 )
 }
 \arguments{
-\item{x}{fitted \code{"cglasso"} model}
+\item{x}{Fitted \code{"cglasso"} model, i.e. an object of class
+\code{"cglassofit"} returned by \code{\link{cglasso}}.}
 
-\item{index}{For which inverse spectral matrix profile is the plot to be drawn? Default is 1.
-The index must be provided within the length of the sequence of lambdas.}
+\item{index}{Integer index selecting which element of \code{x$Theta_list}
+to plot (i.e. which lambda value). Must be in
+\eqn{1, \ldots,} \code{length(x$Theta\_list)}. Default is \code{1}.}
 
-\item{type}{Whether the plot is for real or imaginary part, or both, or in modulus (mod; absolute scale). Default is \code{mod}.}
+\item{type}{Which component to plot: \code{"real"} for the real part,
+\code{"imaginary"} for the imaginary part, \code{"mod"} for the modulus
+(absolute value), or \code{"both"} for real and imaginary side by side.
+Default is \code{"mod"}.}
 
 \item{label}{If \code{TRUE}, label the axes with variable names.}
 
-\item{\dots}{Other graphical parameters to plot.}
+\item{\dots}{Other graphical parameters passed to \code{image.plot}.}
 }
 \value{
-No return value, called for side effects (produces a plot).
+No return value; called for its side effect of producing a plot.
 }
 \description{
-Produces plot of the estimated inverse spectral matrix for a fitted
-\code{"cglasso"} object. A inverse spectral matrix profile plot is produced.
+Produces a heatmap of the estimated spectral precision matrix for a fitted
+\code{"cglasso"} object. An inverse spectral matrix heatmap is produced.
 }
 \seealso{
-\code{cglasso}
+\code{\link{cglasso}}
 }
 \author{
 Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
-\email{yk748@cornell.edu}
+\email{ykim124@ua.edu}
 }

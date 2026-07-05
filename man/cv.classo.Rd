@@ -57,8 +57,10 @@ This means these fits are computed with this observation and the rest of its fol
 The \code{foldid} vector is also returned. Default is keep=FALSE.}
 
 \item{parallel}{If \code{TRUE}, use parallel \code{foreach} to fit each
-fold. Must register parallel before hand, such as \code{doMC} or others.
-Currently it is unavailable.}
+fold. Must register a parallel backend before calling, e.g. via
+\code{doParallel::registerDoParallel()} or
+\code{doMC::registerDoMC()}.
+Limited progress tracing is available when \code{parallel = TRUE}.}
 
 \item{trace.it}{If \code{trace.it=1}, then progress bars are displayed;
 useful for big models that take a long time to fit. Limited tracing if
@@ -69,20 +71,22 @@ useful for big models that take a long time to fit. Limited tracing if
 \value{
 an object of class \code{"cv.classo"} is returned, which is a list
 with the ingredients of the cross-validation fit.
+\describe{
 \item{lambda}{the values of \code{lambda} used in the fits.}
 \item{cvm}{The mean cross-validated error - a vector of length \code{length(lambda)}.}
 \item{cvsd}{estimate of standard error of \code{cvm}.}
 \item{cvup}{upper curve = \code{cvm+cvsd}.}
 \item{cvlo}{lower curve = \code{cvm-cvsd}.}
 \item{nzero}{number of non-zero coefficients at each \code{lambda}.}
-\item{name}{a text string indicating type of measure for plotting purposes).}
+\item{name}{a text string indicating type of measure for plotting purposes.}
 \item{classo.fit}{a fitted classo object for the full data.}
 \item{lambda.min}{value of \code{lambda} that gives minimum \code{cvm}.}
 \item{lambda.1se}{largest value of \code{lambda} such that error is within 1 standard error of the minimum.}
 \item{fit.preval}{if \code{keep=TRUE}, this is the array of pre-validated fits. Some entries can be \code{NA},
-if that and subsequent values of \code{lambda} are not reached for that fold}
-\item{foldid}{if \code{keep=TRUE}, the fold assignments used}
+if that and subsequent values of \code{lambda} are not reached for that fold.}
+\item{foldid}{if \code{keep=TRUE}, the fold assignments used.}
 \item{index}{a one column matrix with the indices of \code{lambda.min} and \code{lambda.1se} in the sequence of coefficients, fits etc.}
+}
 }
 \description{
 Does k-fold cross-validation for classo, produces a plot, and returns a
@@ -101,14 +105,14 @@ are selected at random. Users can reduce this randomness by running
 \examples{
 \donttest{
 set.seed(1010)
-n = 1000
-p = 200
-x = array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
-for (j in 1:p) x[,j] = x[,j] / sqrt(mean(Mod(x[,j])^2))
-e = rnorm(n) + (1+1i) * rnorm(n)
-b = c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
-y = x \%*\% b + e
-cv.test = cv.classo(x,y)
+n <- 1000
+p <- 200
+x <- array(rnorm(n*p), c(n,p)) + (1+1i) * array(rnorm(n*p), c(n,p))
+for (j in 1:p) x[,j] <- x[,j] / sqrt(mean(Mod(x[,j])^2))
+e <- rnorm(n) + (1+1i) * rnorm(n)
+b <- c(1, -1, rep(0, p-2)) + (1+1i) * c(-0.5, 2, rep(0, p-2))
+y <- x \%*\% b + e
+cv.test <- cv.classo(x, y)
 }
 }
 \seealso{
@@ -116,5 +120,5 @@ cv.test = cv.classo(x,y)
 }
 \author{
 Navonil Deb, Younghoon Kim, Sumanta Basu \cr Maintainer: Younghoon Kim
-\email{yk748@cornell.edu}
+\email{ykim124@ua.edu}
 }

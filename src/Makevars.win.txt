@@ -1,0 +1,4 @@
+PKG_CPPFLAGS = -DUSE_TYPE_CHECKING_STRICT -D_FORTIFY_SOURCE=3
+PKG_CXXFLAGS = -std=gnu++17 -Wall -pedantic -g -O2 -mtune=native -flto=2 -fno-strict-aliasing
+PKG_FFLAGS   = -Wall -pedantic -g -O2 -mtune=native -flto=2 -fno-strict-aliasing
+PKG_LIBS     = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
