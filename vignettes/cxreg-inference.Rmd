@@ -1,0 +1,291 @@
+---
+title: "Inference for Sparse Spectral Precision Matrices with `cxreg`"
+author:
+  - Younghoon Kim
+  - Navonil Deb
+  - Sumanta Basu
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: pdf_document
+vignette: >
+  %\VignetteIndexEntry{Inference for Sparse Spectral Precision Matrices with cxreg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+link-citations: true
+bibliography: cxreg_refs.bib
+---
+
+```{r include=FALSE}
+hook_output <- knitr::knit_hooks$get("output")
+knitr::knit_hooks$set(output = function(x, options) {
+  if (!is.null(n <- options$out.lines)) {
+    x <- xfun::split_lines(x)
+    if (length(x) > n) {
+      x <- c(head(x, n), "....\n")
+    }
+    x <- paste(x, collapse = "\n")
+  }
+  hook_output(x, options)
+})
+```
+
+## Introduction
+
+This vignette describes the inference pipeline for sparse spectral precision matrices (SPMs) implemented in \texttt{cxreg}. The methodology is developed in [-@deb2026inference], referred to as DEB26 throughout. We focus on practical usage of the functions.
+
+The spectral precision matrix $\Theta(\omega)$ at frequency $\omega\in(-\pi,\pi]$ is the inverse of the spectral density matrix $f(\omega)$ at the same given frequency $\omega$, and plays the role of a precision matrix in the spectral domain: its zero and nonzero off-diagonal entries encode the absence or presence of frequency-specific conditional dependencies among time series components.
+
+The inference pipeline in \texttt{cxreg} consists of five steps:
+\begin{enumerate}
+  \item \textbf{Data-driven bandwidth selection}: \texttt{select\_m()} selects the smoothing bandwidth $m$ via a generalised cross-validation (GCV) criterion.
+  \item \textbf{Spectral density estimation}: \texttt{dft.all()} and \texttt{fhat\_at()} compute the discrete Fourier transforms (DFTs) and the smoothed periodogram $\hat{f}(\omega_j)$.
+  \item \textbf{Debiased estimation}: \texttt{decglasso()} constructs the debiased complex graphical lasso (deCGLASSO) estimator $\tilde{\Theta}_j$ from the sparse complex graphical lasso (CGLASSO).
+  \item \textbf{Variance estimation}: \texttt{var.cov()} estimates the asymptotic variance and pseudovariance of $\tilde{\Theta}_j$ using either a plug-in or heteroscedasticity and autocorrelation consistent (HAC) estimator.
+  \item \textbf{Inference}: \texttt{spec.test()} constructs entry-wise confidence ellipsoids and test statistics; \texttt{spec.fdr()} applies multiple hypothesis testing with controlled false discovery rate (FDR).
+\end{enumerate}
+
+
+## Background
+
+### Spectral density and the DFT
+
+For a $p$-dimensional weakly stationary time series $\{X_t\}_{t=1}^n$, the discrete Fourier transform (DFT) at a Fourier frequency $\omega_j=2\pi j/n$ is
+
+$$
+d_j := d(\omega_j) = \frac{1}{\sqrt{n}}\sum_{t=1}^n X_t \exp(-i t \omega_j).
+$$
+
+Asymptotically, $d_j \sim \mathcal{N}_{\mathbb{C}}(0, f(\omega_j))$. The smoothed periodogram at $\omega_j$ with half-bandwidth $m$ is
+
+$$
+\hat{f}(\omega_j) = \frac{1}{2\pi(2m+1)} \sum_{k \in W_m(j)} d_k d_k^*,
+$$
+
+where $W_m(j)=\{k:|k-j|\leq m\}$ is the set of $2m+1$ neighboring frequencies around $\omega_j$. 
+
+
+
+### The CGLASSO and deCGLASSO estimators
+
+The CGLASSO estimator $\hat{\Theta}_j$ is the minimizer of the optimization problem
+
+$$
+\hat{\Theta} = \arg\min_{\Theta \in \mathcal{H}_{++}^p} \left\{ -\log\det\Theta + \mathrm{trace}(\hat{f}_j\Theta) + \lambda \|\Theta^-\|_1 \right\},
+$$
+
+where $\|\Theta^-\|_1=\sum_{a \neq b} |\Theta_{a,b}|$ penalizes off-diagonal entries of $\Theta$. In high dimensions, $\hat{\Theta}_j$ has a regularization bias due to the penalty term. The deCGLASSO estimator removes this bias through the computation [-@deb2026inference]:
+
+$$
+\tilde{\Theta}_j = 2\hat{\Theta}_j - \hat{\Theta}_j\hat{f}_j\hat{\Theta}_j.
+$$
+
+Under suitable regularity conditions, [-@deb2026inference] showed that $\sqrt{2m+1}\,(\tilde{\Theta}_j-\Theta_j)_{ab}$ is asymptotically bivariate normal with a covariance matrix constructed by using $\Theta_j$.
+
+
+
+### Step 1 — Generate a multivariate white noise process
+
+We illustrate the pipeline using a multivariate Gaussian white noise process $X_t\sim\mathrm{WN}(0,\Sigma)$, $t=1,\ldots,n$, with a sparse tridiagonal precision matrix $\Theta=\Sigma^{-1}$. Note that the spectral density of white noise process is constant across all frequencies:
+
+$$
+f(\omega) = \frac{1}{2\pi}\Sigma,\quad \omega\in(-\pi,\pi],
+$$
+
+so the true SPM is also constant over frequencies:
+
+$$
+\Theta(\omega) = f(\omega)^{-1} = 2\pi \Sigma^{-1}.
+$$
+
+```{r}
+library(cxreg)
+library(mvtnorm)
+```
+
+
+```{r}
+set.seed(1010)
+p <- 10     # number of variables
+n <- 500    # sample size
+
+# True precision matrix: tridiagonal
+C <- diag(0.7, p)
+C[row(C) == col(C) + 1] <- 0.3
+C[row(C) == col(C) - 1] <- 0.3
+Sigma <- solve(C)
+
+# True SPM: constant across all frequencies
+Theta_true <- 2*pi*C
+
+# Generate white noise observations
+X <- rmvnorm(n = n, mean = rep(0,p), sigma=Sigma)
+cat("Data dimensions:", dim(X), "\n")
+cat("True SPM (1:4, 1:4):\n")
+print(round(Re(Theta_true[1:4, 1:4]), 3))
+```
+
+
+### Step 2 — Bandwidth selection via GCV
+
+\texttt{select\_m()} searches over a grid of half-bandwidths and selects the one that minimizes a GCV criterion based on the deviance of the diagonal periodogram [-@ombao2001gcv]. The GCV criterion provides a principled data-driven choice of the half-bandwidth $m$.
+
+```{r}
+bw_sel <- select_m(X, verbose = FALSE)
+m <- bw_sel$m_opt
+cat("Selected bandwidth: m =", m, "(full bandwidth:", 2*m+1,")\n")
+bw_sel$gcv_table
+```
+
+
+### Step 3 — Compute the DFT and smoothed periodogram
+
+We target $j=\lfloor n/4 \rfloor$, corresponding to $\omega\approx\pi/2$.
+
+```{r}
+j <- floor(n / 4)
+dft <- dft.all(X) # full DFT matrix: n x p
+fhat <- fhat_at(dft, j = j, m = m)  # smoothed periodogram: p x p
+
+cat("Frequency index j =", j, "(omega =", round(2*pi*j/n, 3), ")\n")
+
+# For white noise: fhat should be close to Sigma / (2*pi)
+cat("Max deviation of Re(fhat) from Sigma/(2pi):", round(max(abs(Re(fhat) - Sigma / (2*pi))), 4), "\n")
+```
+
+
+### Step 4 — Fit CGLASSO and compute the deCGLASSO estimator
+
+We fit the CGLASSO path using the EBIC stopping criterion, then apply one-step debiasing:
+
+```{r}
+# Fit CGLASSO
+fit <- cglasso(S = fhat, m = m, type = "II")
+cat("EBIC-selected lambda index:", fit$min_index, "\n")
+cat("Lambda selected:", round(fit$lambda_grid[fit$min_index], 4), "\n")
+```
+
+```{r}
+# One-step debiasing to produce deCGLASSO
+deb <- decglasso(object = fit, fhat = fhat)
+cat("Class of deCGLASSO output:", class(deb), "\n")
+Theta_tilde <- deb$Theta_tilde
+```
+
+### Step 5 — Estimate the asymptotic variance
+
+```{r}
+vc_plug <- var.cov(Theta = Theta_tilde, X = X, j = j, m = m, type = "plug-in")
+vc_hac <- var.cov(Theta = Theta_tilde, X = X, j = j, m = m, type = "HAC")
+cat("Fields:", names(vc_plug), "\n")
+```
+
+The output contains:
+
+- \texttt{Vre}: estimated variance of $\mathrm{Re}(\tilde{\Theta}_{ab})$, a $p \times p$ matrix.
+- \texttt{Vim}: estimated variance of $\mathrm{Im}(\tilde{\Theta}_{ab})$, a $p \times p$ matrix.
+- \texttt{Cov}: estimated covariance of $\mathrm{Re}$ and $\mathrm{Im}$ parts, a $p \times p$ matrix.
+- \texttt{V}: complex variance $\sigma^2$, a $p \times p$ complex matrix.
+- \texttt{PV}: pseudovariance $\delta^2$, a $p \times p$ complex matrix.
+
+These satisfy $\texttt{Vre} = \frac{1}{2}\mathrm{Re}(V + PV)$, $\texttt{Vim} = \frac{1}{2}\mathrm{Re}(V - PV)$, and $\texttt{Cov} = \frac{1}{2}\mathrm{Im}(PV)$. Compare the two estimators on the $(1,2)$ entry:
+
+```{r}
+cat("Entry (1,2) variance (Re part):\n")
+cat("Plug-in Vre:", round(vc_plug$Vre[1,2], 6), "\n")
+cat("HAC Vre:", round(vc_hac$Vre[1,2],  6), "\n")
+```
+
+
+### Step 6 — Entry-wise tests and confidence regions
+
+\texttt{spec.test()} computes for each off-diagonal entry $(a,b)$:
+
+- $Z$-statistics for $\mathrm{Re}(\tilde\Theta_{ab})$ and $\mathrm{Im}(\tilde\Theta_{ab})$.
+- The Mahalanobis chi-squared statistic $(2m+1)\hat{D}_{j,m}^{(a,b)}(0) \sim \chi^2_2$ under $H_0:\Theta_{ab}=0$.
+- Half-widths of the marginal confidence intervals (CI) for the real and imaginary parts, and areas of the joint 95% confidence region (ellipsoids) are produced.
+
+```{r}
+alpha <- 0.2
+st_plug <- spec.test(Est = Theta_tilde, varcov = vc_plug, m = m, alpha = alpha)
+st_hac <- spec.test(Est = Theta_tilde, varcov = vc_hac, m = m, alpha = alpha)
+
+cat("Chi-squared statistic at (1,2) [true edge]:\n")
+cat("Plug-in:", round(st_plug$Chi_sq[1,2], 3), "\n")
+cat("HAC:", round(st_hac$Chi_sq[1,2],  3), "\n")
+cat("Chi-sq(2, 0.95) critical value:", round(qchisq(0.95, 2), 3), "\n")
+
+cat("\n Chi-squared statistic at (1,3) [true null edge]:\n")
+cat("Plug-in:", round(st_plug$Chi_sq[1,3], 3), "\n")
+cat("HAC:", round(st_hac$Chi_sq[1,3],  3), "\n")
+```
+
+The CI half-widths for the real and imaginary parts at the $(1,2)$ entry:
+
+```{r}
+cat("80% CI half-width at (1,2):\n")
+cat("Re part (plug-in):", round(st_plug$wing_re[1,2], 4), "\n")
+cat("Im part (plug-in):", round(st_plug$wing_im[1,2], 4), "\n")
+```
+
+For white noise process, the imaginary part of $\Theta(\omega)$ is zero, so we expect the imaginary CI to contain zero and the real CI to contain $2\pi (\Sigma^{-1})_{ab}$:
+
+```{r}
+# Check if true value falls inside the 95% CI
+true_re_12 <- Re(Theta_true[1,2])
+est_re_12 <- Re(Theta_tilde[1,2])
+hw_re_12 <- st_plug$wing_re[1,2]
+cat("True Re(Theta_12):", round(true_re_12, 4), "\n")
+cat("80% CI: [",round(est_re_12 - hw_re_12, 4), ",", round(est_re_12 + hw_re_12, 4),"]\n")
+cat("True value inside CI:", abs(est_re_12 - true_re_12) <= hw_re_12, "\n")
+```
+
+
+### Step 7 — FDR-controlled support recovery
+
+\texttt{spec.fdr()} applies the thresholding procedure of [-@liu2013gaussian] to control the FDR across all $p(p-1)/2$ off-diagonal entries simultaneously.
+
+```{r}
+fdr_plug <- spec.fdr(Chi_sq = st_plug$Chi_sq, alpha = alpha, diag = FALSE)
+fdr_hac <- spec.fdr(Chi_sq = st_hac$Chi_sq, alpha = alpha, diag = FALSE)
+
+cat("Number of significant edges (plug-in):", sum(fdr_plug$Decision[upper.tri(fdr_plug$Decision)]), "\n")
+cat("Number of significant edges (HAC):", sum(fdr_hac$Decision[upper.tri(fdr_hac$Decision)]), "\n")
+cat("FDR threshold tau (plug-in):", round(fdr_plug$tau, 3), "\n")
+```
+
+For the white noise process, the true edge set of $\Theta(\omega) = 2\pi\Sigma^{-1}$ is the same at every frequency. Compare the discoveries to the truth:
+
+```{r}
+# True support: nonzero off-diagonal entries of C (same as Theta_true up to scale)
+true_support <- (C!=0)*1L
+diag(true_support) <- 0
+
+# Confusion matrix (plug-in)
+dec <- fdr_plug$Decision
+TP <- sum(dec == 1 & true_support == 1 & upper.tri(dec))
+FP <- sum(dec == 1 & true_support == 0 & upper.tri(dec))
+FN <- sum(dec == 0 & true_support == 1 & upper.tri(dec))
+
+cat("True edges in upper triangle:", sum(true_support[upper.tri(true_support)]), "\n")
+cat("True Positives:", TP, "\n")
+cat("False Positives:", FP, "\n")
+cat("False Negatives:", FN, "\n")
+cat("Empirical FDR:", round(FP / max(TP + FP, 1), 3), "\n")
+cat("Power:", round(TP / max(TP + FN, 1), 3), "\n")
+```
+
+
+## Summary of functions
+
+| Step | Function | Description |
+|------|----------|-------------|
+| 1 | `select_m()` | GCV bandwidth selection |
+| 2 | `dft.all()` | Full DFT matrix |
+| 2 | `fhat_at()` | Smoothed periodogram at frequency $j$ |
+| 3 | `cglasso()` | CGLASSO estimator path |
+| 4 | `decglasso()` | One-step debiasing |
+| 5 | `var.cov()` | Asymptotic variance estimation (plug-in or HAC) |
+| 6 | `spec.test()` | Chi-squared statistics and CI half-widths |
+| 7 | `spec.fdr()` | FDR-controlled support recovery |
+
+
+## References

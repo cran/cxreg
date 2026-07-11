@@ -1,3 +1,53 @@
+# cxreg 1.1.4 (2026-07-09)
+
+## New vignette
+
+* Added `vignettes/cxreg-inference.Rmd`: **"Inference for Sparse Spectral
+  Precision Matrices with `cxreg`"**. Covers the full inference pipeline
+  from bandwidth selection through FDR-controlled hypothesis testing,
+  illustrated on a multivariate Gaussian white noise example where the
+  true spectral precision matrix is known in closed form.
+
+---
+
+# cxreg 1.1.2 (2026-06-27)
+
+## Bug fixes
+
+* `vignettes/cxreg.Rmd`: corrected several API calls that had become
+  stale relative to the v1.1.0 changes:
+  - `cglasso_example$n` used to derive `m`; the stored object has no
+    `$m` field, so `m` is now computed as `floor(sqrt(cglasso_example$n))`.
+  - `cglasso(S = f_hat, nobs = n, ...)` → `cglasso(S = f_hat, m = m, ...)`
+    throughout the CGLASSO example section.
+  - `plot(fit$Theta_list, index = ..., type = ...)` → `plot(fit, ...)`
+    (plot dispatch now takes the full `cglassofit` object, not `$Theta_list`).
+  - `dft.X(X_t, j, m)` → `dft.j(X_t, j, m)` (old function name).
+  - `predict(fit, ..., type = "coefficient")` → `type = "coefficients"`.
+  - `\textrm{...}` in LaTeX math environments → `\mathrm{...}` to avoid
+    `amsmath` dependency in the PDF build.
+
+## Internal
+
+* `src/classo_init.cpp`: removed all `extern "C"` forward declarations
+  of Fortran subroutines. The declarations used `Rcomplex*` argument
+  types while the Fortran compiler sees `double complex*`, causing
+  `-Wlto-type-mismatch` warnings under LTO on CRAN's Linux checks.
+  Symbols are now resolved at runtime via `R_useDynamicSymbols(info, TRUE)`,
+  which is the standard approach for packages with Fortran routines.
+
+---
+
+# cxreg 1.1.1 (2026-06-26)
+
+## Bug fixes
+
+* `vignettes/cxreg.pdf`: compacted using
+  `tools::compactPDF(gs_quality = "ebook")`, reducing file size from
+  457 Kb to 168 Kb to address a CRAN PDF size warning.
+
+---
+
 # cxreg 1.1.0 (2026-06-01)
 
 ## New features

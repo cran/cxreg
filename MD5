@@ -1,7 +1,7 @@
-ed712b704b17cea0afbdb2632c98e4e0 *DESCRIPTION
+e8fee15761bd8a14ba73c07dc6aa5fd7 *DESCRIPTION
 442ee0396204e995d0f3265967587d94 *LICENSE
 de7cb318a408a3d6d7b9d1cb46a12d21 *NAMESPACE
-8c7141a2e7d0e8c233400eb8ee030f78 *NEWS.md
+5cde25953bcbdf57c71542e11384e0a8 *NEWS.md
 e4b5cfe1c4afb3a6bb9f635f0225c4c6 *R/buildPremat.default.R
 3cd485f744e34cd1f5db722d76bac1d8 *R/cglasso.R
 f75454250eb2e57a25584e763c7bca1a *R/cglassoFlex.R
@@ -37,12 +37,15 @@ c501c36cbf187d3ebd262cbb70e031dd *R/print.cv.classo.R
 7d30c0b7eb522a2c34956b4906fd6d8b *R/var.cov.R
 25354c3b947ce2775cab9d2e1d50c1c9 *README.md
 2836b2c5db38c9819380bd093383d89d *build/partial.rdb
-06b4f3b0561d183495746227c4ec8c13 *build/vignette.rds
+77dfdc4ac8d49c3d7163f150e02c6f53 *build/vignette.rds
 8459812b7054ed1feb4a5be2ef2a60d0 *data/cglasso_example.rda
 169c396bb650baedcda66240b69e1cd0 *data/classo_example.rda
+3d7833e0774fe06c60d8412c27f57805 *inst/doc/cxreg-inference.R
+34c14bdf296812954bd666039d2ac11f *inst/doc/cxreg-inference.Rmd
+c865b349bfd3a37970e86bdd521d5719 *inst/doc/cxreg-inference.pdf
 3d8bbbf1f3a8d53c9ab288ac87e4645c *inst/doc/cxreg.R
 5893eee1973e9eafdb33840d9e7fbe3a *inst/doc/cxreg.Rmd
-9afe1b05a32dce4163cbe70c3d06ddb1 *inst/doc/cxreg.pdf
+cbdc4fd6e1293b59114c6848adfd22f5 *inst/doc/cxreg.pdf
 65b799d29620af858ba28e93aeb81170 *man/buildPredmat.Rd
 6171792ad238f1a3eb635fd0ea932f73 *man/cglasso.Rd
 9a20312431fa21045b67970a2847e0f7 *man/cglasso.path.Rd
@@ -91,5 +94,6 @@ e3ea4983a30a3dec4e97d81a4324454f *tests/testthat.R
 311f3e3c0cff9255e05aec1b821a5556 *tests/testthat/test-classo.R
 4f321ba1e067c9eac15ed5cea9120e9e *tests/testthat/test-cv.classo.R
 f3c3dcc890fed09cb6646004e1876135 *tests/testthat/test-inference.R
+34c14bdf296812954bd666039d2ac11f *vignettes/cxreg-inference.Rmd
 5893eee1973e9eafdb33840d9e7fbe3a *vignettes/cxreg.Rmd
-4e50bc73c23ab4ab8571bba9133c02ff *vignettes/cxreg_refs.bib
+9b50cc3884169256f0c3107f202a0101 *vignettes/cxreg_refs.bib

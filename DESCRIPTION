@@ -1,6 +1,6 @@
 Package: cxreg
 Title: Complex-Valued Lasso and Complex-Valued Graphical Lasso
-Version: 1.1.2
+Version: 1.1.4
 Authors@R: c(
     person("Younghoon", "Kim", , "ykim124@ua.edu", role = c("aut", "cre")),
     person("Navonil", "Deb", role = "aut"),
@@ -28,10 +28,10 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 RoxygenNote: 7.3.2
 NeedsCompilation: yes
-Packaged: 2026-06-26 16:46:09 UTC; yhkim
+Packaged: 2026-07-10 02:29:12 UTC; yhkim
 Author: Younghoon Kim [aut, cre],
   Navonil Deb [aut],
   Sumanta Basu [aut]
 Maintainer: Younghoon Kim <ykim124@ua.edu>
 Repository: CRAN
-Date/Publication: 2026-07-05 20:30:17 UTC
+Date/Publication: 2026-07-11 18:10:02 UTC
